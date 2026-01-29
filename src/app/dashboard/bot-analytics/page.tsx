@@ -17,7 +17,7 @@ export default function BotAnalyticsPage() {
       <div className="p-4 sm:p-6 lg:p-8">
         <div className="max-w-7xl mx-auto space-y-6">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Bot Analytics</h1>
+            <h1 className="text-3xl font-bold text-foreground">Teams Analytics</h1>
             <p className="text-muted-foreground mt-1">Teams bot DEI detection insights</p>
           </div>
           <div className="flex items-center justify-center h-64">
@@ -81,7 +81,7 @@ export default function BotAnalyticsPage() {
         />
 
         {/* Detection Activity Chart */}
-        <UserActivityChart data={data.activityData} />
+        <UserActivityChart data={data.activityData} showCorrections={false} showReviews={false} />
 
         {/* Category Breakdown & Engagement Metrics */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

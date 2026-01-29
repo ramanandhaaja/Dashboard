@@ -11,9 +11,11 @@ export interface ActivityDataPoint {
 
 interface UserActivityChartProps {
   data: ActivityDataPoint[];
+  showCorrections?: boolean;
+  showReviews?: boolean;
 }
 
-export function UserActivityChart({ data }: UserActivityChartProps) {
+export function UserActivityChart({ data, showCorrections = true, showReviews = true }: UserActivityChartProps) {
   return (
     <div className="bg-white rounded-lg shadow-sm border p-6">
       <div className="mb-4">
@@ -50,24 +52,28 @@ export function UserActivityChart({ data }: UserActivityChartProps) {
             dot={{ fill: '#3b82f6', r: 4 }}
             activeDot={{ r: 6 }}
           />
-          <Line
-            type="monotone"
-            dataKey="corrections"
-            stroke="#10b981"
-            strokeWidth={2}
-            name="Corrections Applied"
-            dot={{ fill: '#10b981', r: 4 }}
-            activeDot={{ r: 6 }}
-          />
-          <Line
-            type="monotone"
-            dataKey="reviews"
-            stroke="#f59e0b"
-            strokeWidth={2}
-            name="Reviews Completed"
-            dot={{ fill: '#f59e0b', r: 4 }}
-            activeDot={{ r: 6 }}
-          />
+          {showCorrections && (
+            <Line
+              type="monotone"
+              dataKey="corrections"
+              stroke="#10b981"
+              strokeWidth={2}
+              name="Corrections Applied"
+              dot={{ fill: '#10b981', r: 4 }}
+              activeDot={{ r: 6 }}
+            />
+          )}
+          {showReviews && (
+            <Line
+              type="monotone"
+              dataKey="reviews"
+              stroke="#f59e0b"
+              strokeWidth={2}
+              name="Reviews Completed"
+              dot={{ fill: '#f59e0b', r: 4 }}
+              activeDot={{ r: 6 }}
+            />
+          )}
         </LineChart>
       </ResponsiveContainer>
     </div>

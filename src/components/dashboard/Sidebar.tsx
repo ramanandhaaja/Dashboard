@@ -19,8 +19,8 @@ import {
 const menuItems = [
   // { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   // { href: "/dashboard/analytics", icon: BarChart3, label: "Analytics" },
-  { href: "/dashboard/guest-analytics", icon: Users, label: "Guest Analytics" },
-  { href: "/dashboard/bot-analytics", icon: Bot, label: "Bot Analytics" },
+  { href: "/dashboard/guest-analytics", icon: Users, label: "Word & Outlook Analytics" },
+  { href: "/dashboard/bot-analytics", icon: Bot, label: "Teams Analytics" },
   // { href: "/dashboard/company", icon: Building2, label: "Company" },
   // { href: "/dashboard/billing", icon: CreditCard, label: "Billing" },
   // { href: "/dashboard/settings", icon: Settings, label: "Settings" },
