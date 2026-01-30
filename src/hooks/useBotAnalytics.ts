@@ -11,6 +11,11 @@ import type { Performer } from '@/components/analytics/top-performers-table';
  * Bot analytics data structure returned by the API.
  * Mirrors GuestAnalyticsData for component compatibility.
  */
+export interface DetectedWord {
+  word: string;
+  count: number;
+}
+
 export interface BotAnalyticsData {
   overview: {
     totalAnalyses: number;  // Total DEI word detections
@@ -22,6 +27,7 @@ export interface BotAnalyticsData {
   departmentData: DepartmentData[];  // Actually category data
   heatmapData: HeatmapData[];
   topPerformers: Performer[];  // Top teams by detection count
+  topDetectedWords: DetectedWord[];  // Top 10 most detected DE&I words
   engagementMetrics: {
     dailyActiveUsers: number;   // Daily active teams
     weeklyActiveUsers: number;  // Weekly active teams

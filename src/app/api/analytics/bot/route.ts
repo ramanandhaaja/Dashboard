@@ -148,6 +148,20 @@ export async function GET() {
       .sort((a, b) => b.totalAnalyses - a.totalAnalyses)
       .slice(0, 10);
 
+    // Calculate top detected words
+    const wordCountMap = new Map<string, number>();
+    detections?.forEach(detection => {
+      if (detection.word) {
+        const word = detection.word.toLowerCase();
+        wordCountMap.set(word, (wordCountMap.get(word) || 0) + 1);
+      }
+    });
+
+    const topDetectedWords = Array.from(wordCountMap.entries())
+      .map(([word, count]) => ({ word, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
     // Calculate engagement metrics
     const now = new Date();
     const oneDay = 24 * 60 * 60 * 1000;
@@ -180,6 +194,7 @@ export async function GET() {
       departmentData,
       heatmapData,
       topPerformers,
+      topDetectedWords,
       engagementMetrics: {
         dailyActiveUsers: dailyActiveTeams,
         weeklyActiveUsers: weeklyActiveTeams,
