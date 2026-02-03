@@ -52,18 +52,19 @@ export async function GET() {
         .map(issue => issue.user_id) || []
     ).size;
 
-    // Group issues by hour for activity chart
-    const activityByHour = new Map<string, { analyses: number; corrections: number; reviews: number }>();
+    // Group issues by day for activity chart (not hour)
+    const activityByDay = new Map<string, { analyses: number; corrections: number; reviews: number }>();
 
     issues?.forEach(issue => {
       const date = new Date(issue.detected_at);
-      const hourKey = `${date.toISOString().split('T')[0]} ${date.getHours().toString().padStart(2, '0')}:00`;
+      // Group by day only (YYYY-MM-DD format)
+      const dayKey = date.toISOString().split('T')[0];
 
-      if (!activityByHour.has(hourKey)) {
-        activityByHour.set(hourKey, { analyses: 0, corrections: 0, reviews: 0 });
+      if (!activityByDay.has(dayKey)) {
+        activityByDay.set(dayKey, { analyses: 0, corrections: 0, reviews: 0 });
       }
 
-      const entry = activityByHour.get(hourKey)!;
+      const entry = activityByDay.get(dayKey)!;
       entry.analyses++;
       if (issue.user_action === 'accepted' || issue.user_action === 'auto_corrected') {
         entry.corrections++;
@@ -73,7 +74,7 @@ export async function GET() {
       }
     });
 
-    const activityData = Array.from(activityByHour.entries())
+    const activityData = Array.from(activityByDay.entries())
       .map(([date, data]) => ({ date, ...data }))
       .sort((a, b) => a.date.localeCompare(b.date));
 
