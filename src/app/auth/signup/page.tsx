@@ -4,7 +4,7 @@ import { useState } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { createUser } from "@/lib/supabase"
+import { signUpWithSupabase } from "@/lib/supabase"
 
 export default function SignUp() {
   const [name, setName] = useState("")
@@ -33,15 +33,15 @@ export default function SignUp() {
     }
 
     try {
-      // Create user in Supabase database
-      const newUser = await createUser({
-        name: name.trim(),
-        email: email.trim().toLowerCase(),
+      // Create user with Supabase Auth
+      const { user } = await signUpWithSupabase(
+        email.trim().toLowerCase(),
         password,
-      })
+        name.trim()
+      )
 
-      if (!newUser) {
-        setError("Failed to create account. Email may already be in use.")
+      if (!user) {
+        setError("Failed to create account. Please try again.")
         setIsLoading(false)
         return
       }
@@ -61,7 +61,18 @@ export default function SignUp() {
       }
     } catch (error) {
       console.error("Signup error:", error)
-      setError("An error occurred. Please try again.")
+      // Handle specific Supabase Auth errors
+      const errorMessage = error instanceof Error ? error.message : "An error occurred"
+
+      if (errorMessage.includes("already registered") || errorMessage.includes("already exists")) {
+        setError("This email is already registered. Please sign in instead.")
+      } else if (errorMessage.includes("weak") || errorMessage.includes("password")) {
+        setError("Password is too weak. Please use a stronger password.")
+      } else if (errorMessage.includes("invalid") && errorMessage.includes("email")) {
+        setError("Please enter a valid email address.")
+      } else {
+        setError("Failed to create account. Please try again.")
+      }
     }
 
     setIsLoading(false)
@@ -81,7 +92,7 @@ export default function SignUp() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
-            <div className="bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded">
+            <div className="bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded dark:bg-red-900/30 dark:border-red-800 dark:text-red-400">
               {error}
             </div>
           )}
@@ -163,7 +174,7 @@ export default function SignUp() {
             </Link>
           </p>
           <Link href="/" className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
-            ← Back to home
+            &larr; Back to home
           </Link>
         </div>
       </div>

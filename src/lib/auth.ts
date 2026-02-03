@@ -1,6 +1,6 @@
 import { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
-import { authenticateUser } from "./supabase"
+import { signInWithSupabase, getProfileById } from "./supabase"
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -16,18 +16,20 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
-          // Authenticate user against Supabase database
-          const user = await authenticateUser(credentials.email, credentials.password)
-          
-          if (user) {
-            return {
-              id: user.id,
-              email: user.email,
-              name: user.name,
-            }
+          // Use Supabase Auth instead of direct query
+          const { user } = await signInWithSupabase(credentials.email, credentials.password)
+          if (!user) return null
+
+          // Fetch profile data from public.users
+          const profile = await getProfileById(user.id)
+
+          return {
+            id: user.id,
+            email: user.email ?? '',
+            name: profile?.name ?? '',
+            role: profile?.role ?? 'individual',
+            company_id: profile?.company_id ?? null,
           }
-          
-          return null
         } catch (error) {
           console.error("Authentication error:", error)
           return null
@@ -47,6 +49,8 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id
         token.email = user.email
         token.name = user.name
+        token.role = user.role
+        token.company_id = user.company_id
       }
       return token
     },
@@ -55,6 +59,8 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.id as string
         session.user.email = token.email as string
         session.user.name = token.name as string
+        session.user.role = token.role as string
+        session.user.company_id = token.company_id as string | null
       }
       return session
     },
