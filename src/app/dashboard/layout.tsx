@@ -36,11 +36,10 @@ export default function DashboardLayout({
   const getPageTitle = () => {
     if (pathname === '/dashboard') return 'Dashboard'
     if (pathname === '/dashboard/settings') return 'Settings'
-    if (pathname === '/dashboard/company') return 'Company Management'
+    if (pathname === '/dashboard/company') return 'Company Analytics'
     if (pathname === '/dashboard/billing') return 'Billing & Usage'
     if (pathname === '/dashboard/profile') return 'Profile'
-    if (pathname === '/dashboard/analytics') return 'Analytics'
-    if (pathname === '/dashboard/guest-analytics') return 'Guest Analytics'
+    if (pathname === '/dashboard/addins-analytics') return 'Add-ins Analytics'
     if (pathname === '/dashboard/documents') return 'Documents'
     return 'Dashboard'
   }

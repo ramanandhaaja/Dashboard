@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { useSession } from 'next-auth/react';
 import { queryKeys } from '@/lib/query-client';
 import type { ActivityDataPoint } from '@/components/analytics/user-activity-chart';
 import type { DepartmentData } from '@/components/analytics/department-comparison-chart';
@@ -29,13 +30,9 @@ export interface GuestAnalyticsData {
   };
 }
 
-/**
- * Fetches guest analytics data from the API.
- *
- * @throws Error if the API request fails
- */
-async function fetchGuestAnalytics(): Promise<GuestAnalyticsData> {
-  const response = await fetch('/api/analytics/guest');
+async function fetchGuestAnalytics(filterUserId?: string | null): Promise<GuestAnalyticsData> {
+  const params = filterUserId ? `?user_id=${filterUserId}` : '';
+  const response = await fetch(`/api/analytics/guest${params}`);
 
   if (!response.ok) {
     throw new Error('Failed to fetch analytics data');
@@ -46,28 +43,17 @@ async function fetchGuestAnalytics(): Promise<GuestAnalyticsData> {
 
 /**
  * Custom hook for fetching and caching guest analytics data.
- *
- * Features:
- * - Automatic caching (5-minute stale time)
- * - Background refetching when data becomes stale
- * - Automatic retry on failure (1 attempt)
- * - Type-safe data access
- *
- * @example
- * ```tsx
- * function GuestAnalyticsPage() {
- *   const { data, isLoading, isError, error, refetch } = useGuestAnalytics();
- *
- *   if (isLoading) return <Loading />;
- *   if (isError) return <Error message={error.message} />;
- *
- *   return <Dashboard data={data} />;
- * }
- * ```
+ * Super admins can pass a filterUserId to view a specific user's data.
  */
-export function useGuestAnalytics() {
+export function useGuestAnalytics(filterUserId?: string | null) {
+  const { data: session } = useSession();
+  const userId = session?.user?.id;
+  // Use filterUserId in query key so each filter gets its own cache
+  const cacheKey = filterUserId || userId || '';
+
   return useQuery({
-    queryKey: queryKeys.analytics.guest(),
-    queryFn: fetchGuestAnalytics,
+    queryKey: queryKeys.analytics.guest(cacheKey),
+    queryFn: () => fetchGuestAnalytics(filterUserId),
+    enabled: !!userId,
   });
 }

@@ -18,25 +18,35 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import type { CompanyRole } from '@/types/company';
 
 interface InviteUserDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onInvite?: (email: string, role: 'admin' | 'user') => void;
+  onInvite?: (email: string, role: CompanyRole) => void;
 }
+
+const inviteRoles: { value: CompanyRole; label: string; description: string }[] = [
+  { value: 'admin', label: 'Admin', description: 'Can manage members, settings, and billing' },
+  { value: 'manager', label: 'Manager', description: 'Can manage team members' },
+  { value: 'member', label: 'Member', description: 'Regular employee with standard access' },
+  { value: 'viewer', label: 'Viewer', description: 'Read-only access to company data' },
+];
 
 export function InviteUserDialog({ open, onOpenChange, onInvite }: InviteUserDialogProps) {
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<'admin' | 'user'>('user');
+  const [role, setRole] = useState<CompanyRole>('member');
 
   const handleInvite = () => {
     if (email && email.includes('@')) {
       onInvite?.(email, role);
       setEmail('');
-      setRole('user');
+      setRole('member');
       onOpenChange(false);
     }
   };
+
+  const selectedRoleInfo = inviteRoles.find((r) => r.value === role);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -64,20 +74,21 @@ export function InviteUserDialog({ open, onOpenChange, onInvite }: InviteUserDia
 
           <div className="space-y-2">
             <Label htmlFor="role">Role</Label>
-            <Select value={role} onValueChange={(value) => setRole(value as 'admin' | 'user')}>
+            <Select value={role} onValueChange={(value) => setRole(value as CompanyRole)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="user">User</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
+                {inviteRoles.map((r) => (
+                  <SelectItem key={r.value} value={r.value}>
+                    {r.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
-            <p className="text-sm text-gray-500">
-              {role === 'admin'
-                ? 'Admins can manage users, settings, and billing'
-                : 'Users can use the add-in with company settings'}
-            </p>
+            {selectedRoleInfo && (
+              <p className="text-sm text-gray-500">{selectedRoleInfo.description}</p>
+            )}
           </div>
         </div>
 

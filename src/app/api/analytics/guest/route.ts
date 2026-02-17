@@ -1,10 +1,20 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    // Fetch all DEI issues for guest users
-    const { data: issues, error } = await supabase
+    // Validate session
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id: userId, role, company_id } = session.user;
+
+    // Build scoped query based on user role
+    let query = supabase
       .from('dei_issues')
       .select(`
         id,
@@ -18,6 +28,26 @@ export async function GET() {
         document_name
       `)
       .order('detected_at', { ascending: false });
+
+    // Check for super_admin user search filter
+    const { searchParams } = new URL(request.url);
+    const filterUserId = searchParams.get('user_id');
+
+    if (role === 'super_admin' && filterUserId) {
+      // Super admin filtering by specific user
+      query = query.eq('user_id', filterUserId);
+    } else if (role === 'super_admin') {
+      // Super admin with no filter: see all issues
+      // No filter applied — returns everything
+    } else if (company_id) {
+      // Company member or owner: see all issues within their company
+      query = query.eq('company_id', company_id);
+    } else {
+      // Individual user: see only their own issues
+      query = query.eq('user_id', userId);
+    }
+
+    const { data: issues, error } = await query;
 
     if (error) {
       console.error('Error fetching DEI issues:', error);

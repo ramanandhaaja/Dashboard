@@ -1,6 +1,7 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useSession } from 'next-auth/react';
 import { queryKeys } from '@/lib/query-client';
 import type { ActivityDataPoint } from '@/components/analytics/user-activity-chart';
 import type { DepartmentData } from '@/components/analytics/department-comparison-chart';
@@ -36,13 +37,9 @@ export interface BotAnalyticsData {
   };
 }
 
-/**
- * Fetches bot analytics data from the API.
- *
- * @throws Error if the API request fails
- */
-async function fetchBotAnalytics(): Promise<BotAnalyticsData> {
-  const response = await fetch('/api/analytics/bot');
+async function fetchBotAnalytics(filterTeamId?: string | null): Promise<BotAnalyticsData> {
+  const params = filterTeamId ? `?team_id=${filterTeamId}` : '';
+  const response = await fetch(`/api/analytics/bot${params}`);
 
   if (!response.ok) {
     throw new Error('Failed to fetch bot analytics data');
@@ -53,28 +50,17 @@ async function fetchBotAnalytics(): Promise<BotAnalyticsData> {
 
 /**
  * Custom hook for fetching and caching Teams bot analytics data.
- *
- * Features:
- * - Automatic caching (5-minute stale time)
- * - Background refetching when data becomes stale
- * - Automatic retry on failure (1 attempt)
- * - Type-safe data access
- *
- * @example
- * ```tsx
- * function BotAnalyticsPage() {
- *   const { data, isLoading, isError, error, refetch } = useBotAnalytics();
- *
- *   if (isLoading) return <Loading />;
- *   if (isError) return <Error message={error.message} />;
- *
- *   return <Dashboard data={data} />;
- * }
- * ```
+ * Super admins can pass a filterTeamId to view a specific team's data.
  */
-export function useBotAnalytics() {
+export function useBotAnalytics(filterTeamId?: string | null) {
+  const { data: session } = useSession();
+  const userId = session?.user?.id;
+  const cacheKey = filterTeamId || userId || '';
+
   return useQuery({
-    queryKey: queryKeys.analytics.bot(),
-    queryFn: fetchBotAnalytics,
+    queryKey: queryKeys.analytics.bot(cacheKey),
+    queryFn: () => fetchBotAnalytics(filterTeamId),
+    enabled: !!userId,
+    placeholderData: keepPreviousData,
   });
 }

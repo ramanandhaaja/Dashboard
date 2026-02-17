@@ -1,10 +1,44 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 
-export async function GET() {
+const EMPTY_BOT_RESPONSE = {
+  overview: { totalAnalyses: 0, totalUsers: 0, avgAccuracy: 0, activeToday: 0 },
+  activityData: [],
+  departmentData: [],
+  heatmapData: [],
+  topPerformers: [],
+  topDetectedWords: [],
+  engagementMetrics: {
+    dailyActiveUsers: 0,
+    weeklyActiveUsers: 0,
+    monthlyActiveUsers: 0,
+    avgSessionDuration: 'N/A',
+  },
+};
+
+export async function GET(request: Request) {
   try {
-    // Fetch all DEI word detections from Teams bot
-    const { data: detections, error } = await supabase
+    // Validate session
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { role, company_id } = session.user;
+
+    // Individual users without a company have no bot analytics (super_admin sees all)
+    if (role !== 'super_admin' && !company_id) {
+      return NextResponse.json(EMPTY_BOT_RESPONSE);
+    }
+
+    // Check for super_admin team filter
+    const { searchParams } = new URL(request.url);
+    const filterTeamId = searchParams.get('team_id');
+
+    // Fetch DEI word detections from Teams bot
+    let botQuery = supabase
       .from('dei_words_teams')
       .select(`
         id,
@@ -23,6 +57,14 @@ export async function GET() {
         created_at
       `)
       .order('timestamp', { ascending: false });
+
+    if (role === 'super_admin' && filterTeamId) {
+      // Super admin filtering by specific team
+      botQuery = botQuery.eq('team_id', filterTeamId);
+    }
+    // super_admin without filter sees all, company users also see all (for now)
+
+    const { data: detections, error } = await botQuery;
 
     if (error) {
       console.error('Error fetching DEI words from Teams:', error);

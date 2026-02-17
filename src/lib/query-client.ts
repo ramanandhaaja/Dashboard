@@ -53,19 +53,25 @@ export function getQueryClient() {
  * Query key factory for consistent key generation across the app.
  *
  * Usage:
- *   queryKeys.analytics.guest()           // ['analytics', 'guest']
+ *   queryKeys.analytics.guest(userId)     // ['analytics', 'guest', userId]
+ *   queryKeys.analytics.bot(userId)       // ['analytics', 'bot', userId]
  *   queryKeys.analytics.company(id)       // ['analytics', 'company', id]
  *   queryKeys.analytics.all()             // ['analytics']
  */
 export const queryKeys = {
   analytics: {
     all: () => ['analytics'] as const,
-    guest: () => ['analytics', 'guest'] as const,
-    bot: () => ['analytics', 'bot'] as const,
+    guest: (userId: string) => ['analytics', 'guest', userId] as const,
+    bot: (userId: string) => ['analytics', 'bot', userId] as const,
     company: (companyId: string) => ['analytics', 'company', companyId] as const,
+    dashboard: (scope: string, filters?: Record<string, string>) => ['analytics', 'dashboard', scope, filters ?? {}] as const,
   },
   users: {
     all: () => ['users'] as const,
     detail: (userId: string) => ['users', userId] as const,
+  },
+  companies: {
+    list: () => ['companies'] as const,
+    detail: (companyId: string) => ['companies', companyId] as const,
   },
 } as const;

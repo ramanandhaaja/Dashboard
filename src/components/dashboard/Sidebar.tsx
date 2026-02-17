@@ -3,32 +3,31 @@
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
+import { useSession } from "next-auth/react"
 import { useState } from "react"
 import {
-  Settings,
-  LayoutDashboard,
-  BarChart3,
   Menu,
   X,
   Building2,
-  CreditCard,
   Users,
   Bot
 } from "lucide-react"
 
-const menuItems = [
-  // { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  // { href: "/dashboard/analytics", icon: BarChart3, label: "Analytics" },
-  { href: "/dashboard/guest-analytics", icon: Users, label: "Word & Outlook Analytics" },
-  { href: "/dashboard/bot-analytics", icon: Bot, label: "Teams Analytics" },
-  // { href: "/dashboard/company", icon: Building2, label: "Company" },
-  // { href: "/dashboard/billing", icon: CreditCard, label: "Billing" },
-  // { href: "/dashboard/settings", icon: Settings, label: "Settings" },
+const allMenuItems = [
+  { href: "/dashboard/company", icon: Building2, label: "Company Analytics", hideForIndividual: true },
+  { href: "/dashboard/addins-analytics", icon: Users, label: "Add-ins Analytics", hideForIndividual: false },
+  { href: "/dashboard/bot-analytics", icon: Bot, label: "Teams Analytics", hideForIndividual: false },
 ]
 
 export function Sidebar() {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
+  const { data: session } = useSession()
+  const role = session?.user?.role
+
+  const menuItems = allMenuItems.filter(
+    (item) => !(item.hideForIndividual && role === 'individual')
+  )
 
   return (
     <>
