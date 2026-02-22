@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
 import { queryKeys } from '@/lib/query-client';
 import type { ActivityDataPoint } from '@/components/analytics/user-activity-chart';
@@ -37,8 +37,8 @@ export interface BotAnalyticsData {
   };
 }
 
-async function fetchBotAnalytics(filterTeamId?: string | null): Promise<BotAnalyticsData> {
-  const params = filterTeamId ? `?team_id=${filterTeamId}` : '';
+async function fetchBotAnalytics(filterUserId?: string | null): Promise<BotAnalyticsData> {
+  const params = filterUserId ? `?user_id=${filterUserId}` : '';
   const response = await fetch(`/api/analytics/bot${params}`);
 
   if (!response.ok) {
@@ -50,17 +50,17 @@ async function fetchBotAnalytics(filterTeamId?: string | null): Promise<BotAnaly
 
 /**
  * Custom hook for fetching and caching Teams bot analytics data.
- * Super admins can pass a filterTeamId to view a specific team's data.
+ * Super admins can pass a filterUserId to view a specific user's data.
  */
-export function useBotAnalytics(filterTeamId?: string | null) {
+export function useBotAnalytics(filterUserId?: string | null) {
   const { data: session } = useSession();
   const userId = session?.user?.id;
-  const cacheKey = filterTeamId || userId || '';
+  // undefined = non-super_admin (use own userId), null = super_admin no filter (show all), string = filtered
+  const cacheKey = filterUserId === undefined ? (userId || '') : (filterUserId || 'all');
 
   return useQuery({
     queryKey: queryKeys.analytics.bot(cacheKey),
-    queryFn: () => fetchBotAnalytics(filterTeamId),
+    queryFn: () => fetchBotAnalytics(filterUserId),
     enabled: !!userId,
-    placeholderData: keepPreviousData,
   });
 }

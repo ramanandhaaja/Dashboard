@@ -34,7 +34,35 @@ interface TeamsRow {
   id: string;
   category: string | null;
   team_id: string;
+  team_name: string | null;
+  confidence_score: number | null;
+  suggested_alternative: string | null;
   timestamp: string;
+}
+
+// Map dei_words_teams categories to bias/tone/clarity modules
+const CATEGORY_TO_MODULE: Record<string, ModuleType> = {
+  gendered: 'bias',
+  racial: 'bias',
+  ageist: 'bias',
+  ableist: 'bias',
+  cultural: 'bias',
+  religious: 'bias',
+  sexist: 'bias',
+  homophobic: 'bias',
+  aggressive: 'tone',
+  dismissive: 'tone',
+  condescending: 'tone',
+  exclusionary: 'tone',
+  insensitive: 'tone',
+  jargon: 'clarity',
+  ambiguous: 'clarity',
+  vague: 'clarity',
+};
+
+function categoryToModule(category: string | null): ModuleType {
+  if (!category) return 'bias';
+  return CATEGORY_TO_MODULE[category.toLowerCase()] || 'bias';
 }
 
 /**
@@ -68,14 +96,42 @@ export async function GET(request: Request) {
 
     // Scope filtering
     if (scope === 'company' && filterCompanyId) {
-      issueQuery = issueQuery.eq('company_id', filterCompanyId);
+      // Get all user IDs belonging to this company (covers issues with NULL company_id)
+      const { data: companyMembers } = await supabase
+        .from('company_members')
+        .select('user_id')
+        .eq('company_id', filterCompanyId)
+        .eq('status', 'active');
+      const memberUserIds = (companyMembers || []).map((m: { user_id: string }) => m.user_id);
+
+      if (memberUserIds.length > 0) {
+        // Match issues by company_id OR by user membership
+        issueQuery = issueQuery.or(
+          `company_id.eq.${filterCompanyId},user_id.in.(${memberUserIds.join(',')})`
+        );
+      } else {
+        issueQuery = issueQuery.eq('company_id', filterCompanyId);
+      }
     } else if (scope === 'guest') {
       // Guest = Word + Outlook issues
       issueQuery = issueQuery.in('source_app', ['word', 'outlook']);
       if (role === 'super_admin' && filterUserId) {
         issueQuery = issueQuery.eq('user_id', filterUserId);
       } else if (role !== 'super_admin' && company_id) {
-        issueQuery = issueQuery.eq('company_id', company_id);
+        // Get all member user IDs to also catch issues with NULL company_id
+        const { data: guestMembers } = await supabase
+          .from('company_members')
+          .select('user_id')
+          .eq('company_id', company_id)
+          .eq('status', 'active');
+        const guestMemberIds = (guestMembers || []).map((m: { user_id: string }) => m.user_id);
+        if (guestMemberIds.length > 0) {
+          issueQuery = issueQuery.or(
+            `company_id.eq.${company_id},user_id.in.(${guestMemberIds.join(',')})`
+          );
+        } else {
+          issueQuery = issueQuery.eq('company_id', company_id);
+        }
       } else if (role !== 'super_admin') {
         issueQuery = issueQuery.eq('user_id', userId);
       }
@@ -83,12 +139,36 @@ export async function GET(request: Request) {
       // Bot = Teams issues only
       issueQuery = issueQuery.eq('source_app', 'teams');
       if (role !== 'super_admin' && company_id) {
-        issueQuery = issueQuery.eq('company_id', company_id);
+        const { data: botMembers } = await supabase
+          .from('company_members')
+          .select('user_id')
+          .eq('company_id', company_id)
+          .eq('status', 'active');
+        const botMemberIds = (botMembers || []).map((m: { user_id: string }) => m.user_id);
+        if (botMemberIds.length > 0) {
+          issueQuery = issueQuery.or(
+            `company_id.eq.${company_id},user_id.in.(${botMemberIds.join(',')})`
+          );
+        } else {
+          issueQuery = issueQuery.eq('company_id', company_id);
+        }
       }
     } else if (scope === 'company') {
       // Company without filter: use session company_id
       if (role !== 'super_admin' && company_id) {
-        issueQuery = issueQuery.eq('company_id', company_id);
+        const { data: compMembers } = await supabase
+          .from('company_members')
+          .select('user_id')
+          .eq('company_id', company_id)
+          .eq('status', 'active');
+        const compMemberIds = (compMembers || []).map((m: { user_id: string }) => m.user_id);
+        if (compMemberIds.length > 0) {
+          issueQuery = issueQuery.or(
+            `company_id.eq.${company_id},user_id.in.(${compMemberIds.join(',')})`
+          );
+        } else {
+          issueQuery = issueQuery.eq('company_id', company_id);
+        }
       }
     }
 
@@ -103,9 +183,22 @@ export async function GET(request: Request) {
     // ── Fetch Teams detections for bot scope or company cross-app ──
     let teamsRows: TeamsRow[] = [];
     if (scope === 'bot' || scope === 'company') {
-      const teamsQuery = supabase
+      let teamsQuery = supabase
         .from('dei_words_teams')
-        .select('id, category, team_id, timestamp');
+        .select('id, category, team_id, team_name, confidence_score, suggested_alternative, timestamp');
+
+      // Filter by user's sender_name when super_admin selects a user (bot scope)
+      if (scope === 'bot' && role === 'super_admin' && filterUserId) {
+        const { data: filterUser } = await supabase
+          .from('users')
+          .select('name')
+          .eq('id', filterUserId)
+          .single();
+        if (filterUser?.name) {
+          teamsQuery = teamsQuery.ilike('sender_name', filterUser.name);
+        }
+      }
+
       const { data: teamsData } = await teamsQuery;
       teamsRows = (teamsData || []) as TeamsRow[];
     }
@@ -123,16 +216,22 @@ export async function GET(request: Request) {
     const userDeptMap = new Map(userDepts.map((u) => [u.id, u.department || 'Unassigned']));
 
     // ── Compute Hero Metrics ──
-    const heroMetrics = computeHeroMetrics(rows);
+    const heroMetrics = scope === 'bot'
+      ? computeBotHeroMetrics(teamsRows)
+      : computeHeroMetrics(rows);
 
     // ── Compute Module Performance ──
-    const modules = computeModulePerformance(rows);
+    const modules = scope === 'bot'
+      ? computeBotModulePerformance(teamsRows)
+      : computeModulePerformance(rows);
 
     // ── Compute Department Leaderboard ──
     const departments = computeDepartmentLeaderboard(rows, userDeptMap);
 
     // ── Compute Trends ──
-    const trends = computeTrends(rows);
+    const trends = scope === 'bot'
+      ? computeBotTrends(teamsRows)
+      : computeTrends(rows);
 
     // ── Compute App Breakdown (company scope uses cross-app data) ──
     const appBreakdown = computeAppBreakdown(rows, teamsRows);
@@ -366,10 +465,11 @@ function computeAppBreakdown(rows: IssueRow[], teamsRows: TeamsRow[]): AppBreakd
     }
   });
 
-  // From dei_words_teams (all count as bias by default since they're word detections)
-  teamsRows.forEach(() => {
+  // From dei_words_teams — map category to module
+  teamsRows.forEach((r) => {
     apps.teams.total++;
-    apps.teams.bias++;
+    const mod = categoryToModule(r.category);
+    apps.teams[mod]++;
   });
 
   return {
@@ -377,4 +477,143 @@ function computeAppBreakdown(rows: IssueRow[], teamsRows: TeamsRow[]): AppBreakd
     outlook: { biasCount: apps.outlook.bias, toneCount: apps.outlook.tone, clarityCount: apps.outlook.clarity, totalCount: apps.outlook.total },
     teams: { biasCount: apps.teams.bias, toneCount: apps.teams.tone, clarityCount: apps.teams.clarity, totalCount: apps.teams.total },
   };
+}
+
+// ─── Bot-specific compute functions (dei_words_teams) ────────────────────────
+
+function computeBotHeroMetrics(teamsRows: TeamsRow[]): HeroMetricsData {
+  const total = teamsRows.length;
+
+  // Health Score = average confidence score across all detections
+  const avgConfidence = total > 0
+    ? Math.round(teamsRows.reduce((sum, r) => sum + (r.confidence_score || 0), 0) / total * 100)
+    : 0;
+
+  // CSRD Readiness = proportion of detections with a suggested alternative
+  const withAlternative = teamsRows.filter((r) => r.suggested_alternative).length;
+  const csrdReadiness = total > 0 ? Math.round((withAlternative / total) * 100) : 0;
+
+  // Cost savings: each detection saves ~€2.50 in manual review
+  const costSavings = total * 2.5;
+
+  // Risk reduction = detections with high confidence (>0.7)
+  const highConfidence = teamsRows.filter((r) => (r.confidence_score || 0) > 0.7).length;
+  const riskReduction = total > 0 ? Math.round((highConfidence / total) * 100) : 0;
+
+  const prevFactor = 0.9;
+
+  return {
+    healthScore: {
+      value: avgConfidence,
+      trend: avgConfidence - Math.round(avgConfidence * prevFactor),
+      previousValue: Math.round(avgConfidence * prevFactor),
+    },
+    csrdReadiness: {
+      value: csrdReadiness,
+      trend: csrdReadiness - Math.round(csrdReadiness * prevFactor),
+      previousValue: Math.round(csrdReadiness * prevFactor),
+    },
+    costSavings: {
+      value: costSavings,
+      trend: costSavings - costSavings * prevFactor,
+      previousValue: costSavings * prevFactor,
+    },
+    riskReduction: {
+      value: riskReduction,
+      trend: riskReduction - Math.round(riskReduction * prevFactor),
+      previousValue: Math.round(riskReduction * prevFactor),
+    },
+  };
+}
+
+function computeBotModulePerformance(teamsRows: TeamsRow[]): ModulePerformanceData {
+  const totalTeams = new Set(teamsRows.map((r) => r.team_id)).size;
+
+  function buildBotModule(mod: ModuleType): ModuleData {
+    const modRows = teamsRows.filter((r) => categoryToModule(r.category) === mod);
+    const withAlternative = modRows.filter((r) => r.suggested_alternative).length;
+    const activeTeams = new Set(modRows.map((r) => r.team_id)).size;
+
+    // Group by category for breakdown
+    const catMap = new Map<string, number>();
+    modRows.forEach((r) => {
+      const cat = r.category || 'Other';
+      catMap.set(cat, (catMap.get(cat) || 0) + 1);
+    });
+    const categories = Array.from(catMap.entries()).map(([name, count]) => ({
+      name,
+      count,
+      percentage: modRows.length > 0 ? Math.round((count / modRows.length) * 100) : 0,
+    }));
+
+    // Average confidence for this module
+    const avgConf = modRows.length > 0
+      ? Math.round(modRows.reduce((sum, r) => sum + (r.confidence_score || 0), 0) / modRows.length * 100)
+      : 100;
+
+    return {
+      score: avgConf,
+      activeUserPercentage: totalTeams > 0 ? Math.round((activeTeams / totalTeams) * 100) : 0,
+      trend: 3,
+      incidentCount: modRows.length,
+      resolvedCount: withAlternative,
+      categories,
+      appBreakdown: { teams: modRows.length },
+    };
+  }
+
+  return {
+    bias: buildBotModule('bias'),
+    tone: buildBotModule('tone'),
+    clarity: buildBotModule('clarity'),
+  };
+}
+
+function computeBotTrends(teamsRows: TeamsRow[]): TrendData {
+  const monthMap = new Map<
+    string,
+    { bias: { total: number; resolved: number }; tone: { total: number; resolved: number }; clarity: { total: number; resolved: number }; overall: { total: number; resolved: number } }
+  >();
+
+  teamsRows.forEach((r) => {
+    const month = r.timestamp ? r.timestamp.substring(0, 7) : 'Unknown';
+    if (!monthMap.has(month)) {
+      monthMap.set(month, {
+        bias: { total: 0, resolved: 0 },
+        tone: { total: 0, resolved: 0 },
+        clarity: { total: 0, resolved: 0 },
+        overall: { total: 0, resolved: 0 },
+      });
+    }
+    const m = monthMap.get(month)!;
+    const mod = categoryToModule(r.category);
+    const hasAlt = !!r.suggested_alternative;
+
+    m.overall.total++;
+    if (hasAlt) m.overall.resolved++;
+
+    m[mod].total++;
+    if (hasAlt) m[mod].resolved++;
+  });
+
+  const scoreOf = (s: { total: number; resolved: number }) =>
+    s.total > 0 ? Math.round((s.resolved / s.total) * 100) : 0;
+
+  const monthly = Array.from(monthMap.entries())
+    .map(([period, m]) => ({
+      period,
+      biasScore: scoreOf(m.bias),
+      toneScore: scoreOf(m.tone),
+      clarityScore: scoreOf(m.clarity),
+      overallScore: scoreOf(m.overall),
+    }))
+    .sort((a, b) => a.period.localeCompare(b.period));
+
+  const quarterlyTargets = [
+    { name: 'Communication Health Score', current: monthly.at(-1)?.overallScore ?? 0, target: 90, unit: '%' },
+    { name: 'CSRD Compliance', current: monthly.at(-1)?.overallScore ?? 0, target: 85, unit: '%' },
+    { name: 'Cost Savings Target', current: teamsRows.length * 2.5, target: 5000, unit: '€' },
+  ];
+
+  return { monthly, quarterlyTargets };
 }

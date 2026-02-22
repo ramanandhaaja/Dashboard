@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
 import { queryKeys } from '@/lib/query-client';
 import type { ActivityDataPoint } from '@/components/analytics/user-activity-chart';
+import type { SourceBreakdownData } from '@/components/analytics/source-breakdown-chart';
 import type { DepartmentData } from '@/components/analytics/department-comparison-chart';
 import type { HeatmapData } from '@/components/analytics/activity-heatmap';
 import type { Performer } from '@/components/analytics/top-performers-table';
@@ -19,6 +20,7 @@ export interface GuestAnalyticsData {
     activeToday: number;
   };
   activityData: ActivityDataPoint[];
+  sourceBreakdown: SourceBreakdownData[];
   departmentData: DepartmentData[];
   heatmapData: HeatmapData[];
   topPerformers: Performer[];
@@ -49,7 +51,8 @@ export function useGuestAnalytics(filterUserId?: string | null) {
   const { data: session } = useSession();
   const userId = session?.user?.id;
   // Use filterUserId in query key so each filter gets its own cache
-  const cacheKey = filterUserId || userId || '';
+  // undefined = non-super_admin (use own userId), null = super_admin no filter (show all), string = filtered
+  const cacheKey = filterUserId === undefined ? (userId || '') : (filterUserId || 'all');
 
   return useQuery({
     queryKey: queryKeys.analytics.guest(cacheKey),

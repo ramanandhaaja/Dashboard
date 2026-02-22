@@ -25,7 +25,8 @@ export async function GET(request: Request) {
         trigger_type,
         auto_corrected,
         detected_at,
-        document_name
+        document_name,
+        source_app
       `)
       .order('detected_at', { ascending: false });
 
@@ -39,11 +40,8 @@ export async function GET(request: Request) {
     } else if (role === 'super_admin') {
       // Super admin with no filter: see all issues
       // No filter applied — returns everything
-    } else if (company_id) {
-      // Company member or owner: see all issues within their company
-      query = query.eq('company_id', company_id);
     } else {
-      // Individual user: see only their own issues
+      // Company member, owner, or individual user: see only their own issues
       query = query.eq('user_id', userId);
     }
 
@@ -122,36 +120,48 @@ export async function GET(request: Request) {
       avgAccuracy
     }));
 
-    // Create heatmap data - must match component's expected days and hours
-    const validDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-    const validHours = ['9 AM', '10 AM', '11 AM', '2 PM', '3 PM'];
-    const hourMapping: Record<number, string> = {
-      9: '9 AM', 10: '10 AM', 11: '11 AM', 14: '2 PM', 15: '3 PM'
-    };
+    // Create heatmap data from all issues by day-of-week and hour
+    const allDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const allHours = Array.from({ length: 18 }, (_, i) => {
+      const h = i + 6; // 6 AM to 11 PM
+      const period = h >= 12 ? 'PM' : 'AM';
+      const display = h > 12 ? h - 12 : h === 0 ? 12 : h;
+      return `${display} ${period}`;
+    });
 
     const heatmapMap = new Map<string, number>();
     issues?.forEach(issue => {
       const date = new Date(issue.detected_at);
-      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
       const day = dayNames[date.getDay()];
       const hour = date.getHours();
-      const hourLabel = hourMapping[hour];
-
-      // Only include weekdays and valid hours
-      if (validDays.includes(day) && hourLabel) {
+      if (hour >= 6 && hour <= 23) {
+        const period = hour >= 12 ? 'PM' : 'AM';
+        const display = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+        const hourLabel = `${display} ${period}`;
         const key = `${day}|${hourLabel}`;
         heatmapMap.set(key, (heatmapMap.get(key) || 0) + 1);
       }
     });
 
-    // Generate heatmap data for all valid day/hour combinations
     const heatmapData: { day: string; hour: string; value: number }[] = [];
-    validDays.forEach(day => {
-      validHours.forEach(hour => {
+    allDays.forEach(day => {
+      allHours.forEach(hour => {
         const key = `${day}|${hour}`;
         heatmapData.push({ day, hour, value: heatmapMap.get(key) || 0 });
       });
     });
+
+    // Source breakdown (Word vs Outlook vs Teams)
+    const sourceMap = new Map<string, number>();
+    issues?.forEach(issue => {
+      const source = issue.source_app || 'word';
+      sourceMap.set(source, (sourceMap.get(source) || 0) + 1);
+    });
+    const sourceBreakdown = ['word', 'outlook'].map(source => ({
+      source,
+      count: sourceMap.get(source) || 0,
+    }));
 
     // Top performers
     const userStats = new Map<string, { analyses: number; accepted: number }>();
@@ -189,6 +199,7 @@ export async function GET(request: Request) {
         activeToday
       },
       activityData,
+      sourceBreakdown,
       departmentData,
       heatmapData,
       topPerformers,

@@ -14,7 +14,7 @@ import { UserActivityChart } from '@/components/analytics/user-activity-chart';
 import { DepartmentComparisonChart } from '@/components/analytics/department-comparison-chart';
 import { ActivityHeatmap } from '@/components/analytics/activity-heatmap';
 import { TopPerformersTable } from '@/components/analytics/top-performers-table';
-import { EngagementMetrics } from '@/components/analytics/engagement-metrics';
+import { SourceBreakdownChart } from '@/components/analytics/source-breakdown-chart';
 import { UserSearchFilter, type SelectedUser } from '@/components/analytics/user-search-filter';
 import { RefreshCw } from 'lucide-react';
 
@@ -147,19 +147,16 @@ export default function AddinsAnalyticsPage() {
               activeToday={data.overview.activeToday}
             />
 
-            {/* User Activity Chart */}
-            <UserActivityChart data={data.activityData} />
-
-            {/* Issue Type Breakdown & Engagement Metrics */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <DepartmentComparisonChart data={data.departmentData} />
-              <EngagementMetrics
-                dailyActiveUsers={data.engagementMetrics.dailyActiveUsers}
-                weeklyActiveUsers={data.engagementMetrics.weeklyActiveUsers}
-                monthlyActiveUsers={data.engagementMetrics.monthlyActiveUsers}
-                avgSessionDuration={data.engagementMetrics.avgSessionDuration}
-              />
+            {/* User Activity Chart & Source Breakdown */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <UserActivityChart data={data.activityData} />
+              </div>
+              <SourceBreakdownChart data={data.sourceBreakdown} />
             </div>
+
+            {/* Issue Type Breakdown */}
+            <DepartmentComparisonChart data={data.departmentData} />
 
             {/* Activity Heatmap - Shows when issues were detected */}
             <ActivityHeatmap data={data.heatmapData} />

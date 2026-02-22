@@ -33,9 +33,20 @@ export async function GET(request: Request) {
       return NextResponse.json(EMPTY_BOT_RESPONSE);
     }
 
-    // Check for super_admin team filter
+    // Check for super_admin user filter
     const { searchParams } = new URL(request.url);
-    const filterTeamId = searchParams.get('team_id');
+    const filterUserId = searchParams.get('user_id');
+
+    // If filtering by user, look up their name to match against sender_name
+    let filterSenderName: string | null = null;
+    if (role === 'super_admin' && filterUserId) {
+      const { data: filterUser } = await supabase
+        .from('users')
+        .select('name')
+        .eq('id', filterUserId)
+        .single();
+      filterSenderName = filterUser?.name || null;
+    }
 
     // Fetch DEI word detections from Teams bot
     let botQuery = supabase
@@ -49,6 +60,7 @@ export async function GET(request: Request) {
         channel_id,
         channel_name,
         user_id_hash,
+        sender_name,
         context_snippet,
         confidence_score,
         explanation,
@@ -58,9 +70,9 @@ export async function GET(request: Request) {
       `)
       .order('timestamp', { ascending: false });
 
-    if (role === 'super_admin' && filterTeamId) {
-      // Super admin filtering by specific team
-      botQuery = botQuery.eq('team_id', filterTeamId);
+    if (role === 'super_admin' && filterSenderName) {
+      // Super admin filtering by specific user's sender name
+      botQuery = botQuery.ilike('sender_name', filterSenderName);
     }
     // super_admin without filter sees all, company users also see all (for now)
 
@@ -91,26 +103,25 @@ export async function GET(request: Request) {
         .map(d => d.team_id) || []
     ).size;
 
-    // Group detections by hour for activity chart
-    const activityByHour = new Map<string, { analyses: number; corrections: number; reviews: number }>();
+    // Group detections by day for activity chart
+    const activityByDay = new Map<string, { analyses: number; corrections: number; reviews: number }>();
 
     detections?.forEach(detection => {
       const date = new Date(detection.timestamp);
-      const hourKey = `${date.toISOString().split('T')[0]} ${date.getHours().toString().padStart(2, '0')}:00`;
+      const dayKey = date.toISOString().split('T')[0];
 
-      if (!activityByHour.has(hourKey)) {
-        activityByHour.set(hourKey, { analyses: 0, corrections: 0, reviews: 0 });
+      if (!activityByDay.has(dayKey)) {
+        activityByDay.set(dayKey, { analyses: 0, corrections: 0, reviews: 0 });
       }
 
-      const entry = activityByHour.get(hourKey)!;
+      const entry = activityByDay.get(dayKey)!;
       entry.analyses++;
-      // Bot detections are all "analyses", corrections would be if user applied suggestion
       if (detection.suggested_alternative) {
         entry.corrections++;
       }
     });
 
-    const activityData = Array.from(activityByHour.entries())
+    const activityData = Array.from(activityByDay.entries())
       .map(([date, data]) => ({ date, ...data }))
       .sort((a, b) => a.date.localeCompare(b.date));
 
@@ -129,32 +140,33 @@ export async function GET(request: Request) {
       avgAccuracy: avgConfidence
     }));
 
-    // Create heatmap data - must match component's expected days and hours
-    const validDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-    const validHours = ['9 AM', '10 AM', '11 AM', '2 PM', '3 PM'];
-    const hourMapping: Record<number, string> = {
-      9: '9 AM', 10: '10 AM', 11: '11 AM', 14: '2 PM', 15: '3 PM'
-    };
+    // Create heatmap data from all detections by day-of-week and hour
+    const allDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const allHours = Array.from({ length: 18 }, (_, i) => {
+      const h = i + 6; // 6 AM to 11 PM
+      const period = h >= 12 ? 'PM' : 'AM';
+      const display = h > 12 ? h - 12 : h === 0 ? 12 : h;
+      return `${display} ${period}`;
+    });
 
     const heatmapMap = new Map<string, number>();
     detections?.forEach(detection => {
       const date = new Date(detection.timestamp);
-      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
       const day = dayNames[date.getDay()];
       const hour = date.getHours();
-      const hourLabel = hourMapping[hour];
-
-      // Only include weekdays and valid hours
-      if (validDays.includes(day) && hourLabel) {
+      if (hour >= 6 && hour <= 23) {
+        const period = hour >= 12 ? 'PM' : 'AM';
+        const display = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+        const hourLabel = `${display} ${period}`;
         const key = `${day}|${hourLabel}`;
         heatmapMap.set(key, (heatmapMap.get(key) || 0) + 1);
       }
     });
 
-    // Generate heatmap data for all valid day/hour combinations
     const heatmapData: { day: string; hour: string; value: number }[] = [];
-    validDays.forEach(day => {
-      validHours.forEach(hour => {
+    allDays.forEach(day => {
+      allHours.forEach(hour => {
         const key = `${day}|${hour}`;
         heatmapData.push({ day, hour, value: heatmapMap.get(key) || 0 });
       });

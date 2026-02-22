@@ -22,18 +22,18 @@ import { RefreshCw } from 'lucide-react';
 export default function BotAnalyticsPage() {
   const { data: session } = useSession();
   const isSuperAdmin = session?.user?.role === 'super_admin';
-  const [filterTeamId, setFilterTeamId] = useState<string | null>(null);
+  const [filterUserId, setFilterUserId] = useState<string | null>(null);
   const [filteredUser, setFilteredUser] = useState<SelectedUser | null>(null);
 
   // Existing issue-level data
   const { data, isLoading, isError, error, refetch, isFetching } = useBotAnalytics(
-    isSuperAdmin ? filterTeamId : undefined
+    isSuperAdmin ? filterUserId : undefined
   );
 
   // New Phase 1 KPI data (hero metrics + modules)
   const { data: kpiData } = useDashboardAnalytics(
     'bot',
-    isSuperAdmin && filterTeamId ? { userId: filterTeamId } : undefined
+    isSuperAdmin && filterUserId ? { userId: filterUserId } : undefined
   );
 
   const { trigger: exportCSV, isExporting: isExportingCSV } = useExportCSV('bot');
@@ -116,50 +116,64 @@ export default function BotAnalyticsPage() {
         {isSuperAdmin && (
           <UserSearchFilter
             onUserSelect={(userId, user) => {
-              setFilterTeamId(userId);
+              setFilterUserId(userId);
               setFilteredUser(user);
             }}
           />
         )}
 
-        {/* Phase 1 KPI: Hero Metrics */}
-        {kpiData && <HeroMetrics data={kpiData.heroMetrics} />}
-
-        {/* Phase 1 KPI: Module Performance Tiles */}
-        {kpiData && <ModulePerformanceTiles data={kpiData.modules} />}
-
-        {/* Analytics Overview - Detections, Teams, Confidence, Active Today */}
-        <AnalyticsOverview
-          totalAnalyses={data.overview.totalAnalyses}
-          totalUsers={data.overview.totalUsers}
-          avgAccuracy={data.overview.avgAccuracy}
-          activeToday={data.overview.activeToday}
-        />
-
-        {/* Detection Activity Chart & Top Detected Words */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <UserActivityChart data={data.activityData} showCorrections={false} showReviews={false} />
+        {/* Loading overlay when switching users */}
+        {isFetching && (
+          <div className="flex items-center justify-center py-8">
+            <div className="flex items-center gap-3 text-muted-foreground">
+              <RefreshCw className="h-5 w-5 animate-spin" />
+              <span>Loading data{filteredUser ? ` for ${filteredUser.name}` : ''}...</span>
+            </div>
           </div>
-          <TopDetectedWords words={data.topDetectedWords} />
-        </div>
+        )}
 
-        {/* Category Breakdown & Engagement Metrics */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <DepartmentComparisonChart data={data.departmentData} />
-          <EngagementMetrics
-            dailyActiveUsers={data.engagementMetrics.dailyActiveUsers}
-            weeklyActiveUsers={data.engagementMetrics.weeklyActiveUsers}
-            monthlyActiveUsers={data.engagementMetrics.monthlyActiveUsers}
-            avgSessionDuration={data.engagementMetrics.avgSessionDuration}
-          />
-        </div>
+        {!isFetching && (
+          <>
+            {/* Phase 1 KPI: Hero Metrics */}
+            {kpiData && <HeroMetrics data={kpiData.heroMetrics} />}
 
-        {/* Activity Heatmap - Shows when detections occurred */}
-        <ActivityHeatmap data={data.heatmapData} />
+            {/* Phase 1 KPI: Module Performance Tiles */}
+            {kpiData && <ModulePerformanceTiles data={kpiData.modules} />}
 
-        {/* Top Teams Table */}
-        <TopPerformersTable performers={data.topPerformers} />
+            {/* Analytics Overview - Detections, Teams, Confidence, Active Today */}
+            <AnalyticsOverview
+              totalAnalyses={data.overview.totalAnalyses}
+              totalUsers={data.overview.totalUsers}
+              avgAccuracy={data.overview.avgAccuracy}
+              activeToday={data.overview.activeToday}
+            />
+
+            {/* Detection Activity Chart & Top Detected Words */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <UserActivityChart data={data.activityData} showCorrections={false} showReviews={false} />
+              </div>
+              <TopDetectedWords words={data.topDetectedWords} />
+            </div>
+
+            {/* Category Breakdown & Engagement Metrics */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <DepartmentComparisonChart data={data.departmentData} />
+              <EngagementMetrics
+                dailyActiveUsers={data.engagementMetrics.dailyActiveUsers}
+                weeklyActiveUsers={data.engagementMetrics.weeklyActiveUsers}
+                monthlyActiveUsers={data.engagementMetrics.monthlyActiveUsers}
+                avgSessionDuration={data.engagementMetrics.avgSessionDuration}
+              />
+            </div>
+
+            {/* Activity Heatmap - Shows when detections occurred */}
+            <ActivityHeatmap data={data.heatmapData} />
+
+            {/* Top Teams Table */}
+            <TopPerformersTable performers={data.topPerformers} />
+          </>
+        )}
       </div>
     </div>
   );

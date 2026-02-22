@@ -2,25 +2,6 @@
 
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { ChatKit, useChatKit } from '@openai/chatkit-react';
-import { getChatKitClientSecret } from '@/lib/chatkit';
-
-function MyChat() {
-  const { control } = useChatKit({
-    api: {
-      async getClientSecret(existing) {
-        if (existing) {
-          // implement session refresh if needed
-        }
-
-        return await getChatKitClientSecret();
-      },
-    },
-  });
-
-  return <ChatKit control={control} className="h-[600px] w-full" />;
-}
-
 export default function Home() {
   const { data: session } = useSession()
   return (
@@ -123,9 +104,7 @@ export default function Home() {
 
       {/* Main Content */}
       <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] px-4 py-8">
-        <div className="max-w-6xl w-full">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-            {/* Left Column - Welcome Section */}
+        <div className="max-w-lg w-full mx-auto">
             <div className="space-y-8 p-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
               <div className="text-center">
                 <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
@@ -168,12 +147,12 @@ export default function Home() {
                     Sign In
                   </Link>
 
-                  <Link
+                  {/* <Link
                     href="/auth/signup"
                     className="w-full flex justify-center py-3 px-4 border border-indigo-300 dark:border-indigo-600 rounded-md shadow-sm text-sm font-medium text-indigo-700 dark:text-indigo-300 bg-white dark:bg-gray-800 hover:bg-indigo-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
                   >
                     Sign Up
-                  </Link>
+                  </Link> */}
                 </div>
               )}
 
@@ -181,19 +160,6 @@ export default function Home() {
                 Built with Next.js, Tailwind CSS & NextAuth.js
               </div>
             </div>
-
-            {/* Right Column - ChatKit Widget 
-            <div className="p-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 text-center">
-                AI Assistant Demo
-              </h3>
-              <p className="text-gray-600 dark:text-gray-300 mb-6 text-center">
-                Chat with our AI assistant powered by OpenAI
-              </p>
-              <MyChat />
-            </div>
-            */}
-          </div>
         </div>
       </div>
     </div>

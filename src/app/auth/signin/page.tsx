@@ -105,12 +105,12 @@ export default function SignIn() {
         </form>
 
         <div className="text-center">
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+          {/* <p className="text-sm text-gray-600 dark:text-gray-400">
             Don&apos;t have an account?{" "}
             <Link href="/auth/signup" className="text-indigo-600 hover:text-indigo-500 font-medium">
               Sign up
             </Link>
-          </p>
+          </p> */}
           <Link href="/" className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
             &larr; Back to home
           </Link>
