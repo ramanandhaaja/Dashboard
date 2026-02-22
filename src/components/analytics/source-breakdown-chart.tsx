@@ -55,8 +55,8 @@ export function SourceBreakdownChart({ data }: SourceBreakdownChartProps) {
                 outerRadius={90}
                 paddingAngle={3}
                 dataKey="value"
-                label={({ name, percent }: { name: string; percent?: number }) =>
-                  `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
+                label={(props: Record<string, unknown>) =>
+                  `${props.name ?? ''} ${(((props.percent as number) ?? 0) * 100).toFixed(0)}%`
                 }
                 style={{ fontSize: '12px' }}
               >
