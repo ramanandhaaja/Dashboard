@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { ChevronDown, ChevronUp, Brain, MessageCircle, BookOpen } from 'lucide-react';
 import type { ModulePerformanceData, ModuleData } from '@/types/analytics';
 
@@ -20,8 +20,34 @@ const colorMap: Record<string, { bg: string; border: string; text: string; badge
   green: { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700', badge: 'bg-green-100 text-green-700', bar: 'bg-green-500' },
 };
 
+function TruncatedText({ text, className }: { text: string; className?: string }) {
+  const textRef = useRef<HTMLSpanElement>(null);
+  const [showTooltip, setShowTooltip] = useState(false);
+
+  const handleMouseEnter = useCallback(() => {
+    const el = textRef.current;
+    if (el && el.scrollWidth > el.clientWidth) {
+      setShowTooltip(true);
+    }
+  }, []);
+
+  return (
+    <span className={`relative ${className || ''}`} onMouseEnter={handleMouseEnter} onMouseLeave={() => setShowTooltip(false)}>
+      <span ref={textRef} className="text-xs text-muted-foreground truncate block">{text}</span>
+      {showTooltip && (
+        <span className="absolute left-0 bottom-full mb-1 bg-foreground text-background text-xs rounded px-2 py-1 whitespace-nowrap z-50 shadow-lg pointer-events-none">
+          {text}
+        </span>
+      )}
+    </span>
+  );
+}
+
+const INITIAL_CATEGORY_COUNT = 10;
+
 function ModuleTile({ moduleKey, data }: { moduleKey: keyof typeof moduleConfig; data: ModuleData }) {
   const [expanded, setExpanded] = useState(false);
+  const [showAllCategories, setShowAllCategories] = useState(false);
   const config = moduleConfig[moduleKey];
   const colors = colorMap[config.color];
   const Icon = config.icon;
@@ -79,9 +105,9 @@ function ModuleTile({ moduleKey, data }: { moduleKey: keyof typeof moduleConfig;
           <div>
             <h4 className="text-sm font-medium text-foreground mb-2">Categories</h4>
             <div className="space-y-2">
-              {data.categories.map((cat) => (
+              {[...data.categories].sort((a, b) => b.count - a.count).slice(0, showAllCategories ? undefined : INITIAL_CATEGORY_COUNT).map((cat) => (
                 <div key={cat.name} className="flex items-center gap-3">
-                  <span className="text-xs text-muted-foreground w-40 truncate">{cat.name}</span>
+                  <TruncatedText text={cat.name} className="w-40" />
                   <div className="flex-1 h-2 bg-white rounded-full overflow-hidden">
                     <div className={`h-full ${colors.bar} rounded-full`} style={{ width: `${cat.percentage}%` }} />
                   </div>
@@ -89,6 +115,18 @@ function ModuleTile({ moduleKey, data }: { moduleKey: keyof typeof moduleConfig;
                 </div>
               ))}
             </div>
+            {data.categories.length > INITIAL_CATEGORY_COUNT && (
+              <button
+                onClick={() => setShowAllCategories(!showAllCategories)}
+                className="mt-2 flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {showAllCategories ? (
+                  <>Show less <ChevronUp className="w-3 h-3" /></>
+                ) : (
+                  <>See more ({data.categories.length - INITIAL_CATEGORY_COUNT} more) <ChevronDown className="w-3 h-3" /></>
+                )}
+              </button>
+            )}
           </div>
 
           {/* App breakdown */}
