@@ -55,7 +55,8 @@ export function SourceBreakdownChart({ data }: SourceBreakdownChartProps) {
                 outerRadius={90}
                 paddingAngle={3}
                 dataKey="value"
-                label={(props: Record<string, unknown>) =>
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                label={(props: any) =>
                   `${props.name ?? ''} ${(((props.percent as number) ?? 0) * 100).toFixed(0)}%`
                 }
                 style={{ fontSize: '12px' }}
