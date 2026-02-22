@@ -26,18 +26,6 @@ export default function Home() {
                 >
                   Home
                 </Link>
-                <Link 
-                  href="/about" 
-                  className="text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 px-3 py-2 rounded-md text-sm font-medium transition-colors"
-                >
-                  About
-                </Link>
-                <Link 
-                  href="/pricing" 
-                  className="text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 px-3 py-2 rounded-md text-sm font-medium transition-colors"
-                >
-                  Pricing
-                </Link>
                 {session ? (
                   <Link 
                     href="/dashboard" 
@@ -85,18 +73,6 @@ export default function Home() {
               className="text-gray-900 dark:text-gray-100 hover:text-indigo-600 dark:hover:text-indigo-400 block px-3 py-2 rounded-md text-base font-medium"
             >
               Home
-            </Link>
-            <Link 
-              href="/about" 
-              className="text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 block px-3 py-2 rounded-md text-base font-medium"
-            >
-              About
-            </Link>
-            <Link 
-              href="/pricing" 
-              className="text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 block px-3 py-2 rounded-md text-base font-medium"
-            >
-              Pricing
             </Link>
           </div>
         </div>
