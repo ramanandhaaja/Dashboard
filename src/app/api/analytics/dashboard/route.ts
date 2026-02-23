@@ -197,6 +197,28 @@ export async function GET(request: Request) {
         if (filterUser?.name) {
           teamsQuery = teamsQuery.ilike('sender_name', filterUser.name);
         }
+      } else if (scope === 'bot' && role !== 'super_admin' && company_id) {
+        // Company users: only show data from their company members
+        const { data: botMembers } = await supabase
+          .from('company_members')
+          .select('user_id')
+          .eq('company_id', company_id)
+          .eq('status', 'active');
+
+        if (botMembers && botMembers.length > 0) {
+          const memberIds = botMembers.map((m: { user_id: string }) => m.user_id);
+          const { data: memberUsers } = await supabase
+            .from('users')
+            .select('email')
+            .in('id', memberIds);
+
+          const memberEmails = (memberUsers || []).map((u: { email: string }) => u.email.toLowerCase());
+          if (memberEmails.length > 0) {
+            teamsQuery = teamsQuery.in('sender_email', memberEmails);
+          } else {
+            teamsRows = [];
+          }
+        }
       }
 
       const { data: teamsData } = await teamsQuery;

@@ -73,8 +73,32 @@ export async function GET(request: Request) {
     if (role === 'super_admin' && filterSenderName) {
       // Super admin filtering by specific user's sender name
       botQuery = botQuery.ilike('sender_name', filterSenderName);
+    } else if (role !== 'super_admin' && company_id) {
+      // Company users: only show data from their company members
+      const { data: companyMembers } = await supabase
+        .from('company_members')
+        .select('user_id')
+        .eq('company_id', company_id)
+        .eq('status', 'active');
+
+      if (companyMembers && companyMembers.length > 0) {
+        const memberIds = companyMembers.map((m: { user_id: string }) => m.user_id);
+        const { data: memberUsers } = await supabase
+          .from('users')
+          .select('email')
+          .in('id', memberIds);
+
+        const memberEmails = (memberUsers || []).map((u: { email: string }) => u.email.toLowerCase());
+
+        if (memberEmails.length > 0) {
+          botQuery = botQuery.in('sender_email', memberEmails);
+        } else {
+          return NextResponse.json(EMPTY_BOT_RESPONSE);
+        }
+      } else {
+        return NextResponse.json(EMPTY_BOT_RESPONSE);
+      }
     }
-    // super_admin without filter sees all, company users also see all (for now)
 
     const { data: detections, error } = await botQuery;
 
