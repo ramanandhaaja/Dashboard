@@ -15,6 +15,8 @@ interface CompanyDetailViewProps {
   onBack?: () => void;
   /** Pre-loaded data from the list endpoint (company users get this) */
   preloaded?: CompanyDetail;
+  /** Hide members table and invite dialog (employee view) */
+  hideTeamManagement?: boolean;
 }
 
 function DetailSkeleton() {
@@ -41,7 +43,7 @@ function DetailSkeleton() {
   );
 }
 
-export function CompanyDetailView({ companyId, onBack, preloaded }: CompanyDetailViewProps) {
+export function CompanyDetailView({ companyId, onBack, preloaded, hideTeamManagement }: CompanyDetailViewProps) {
   const [showInviteDialog, setShowInviteDialog] = useState(false);
 
   // Only fetch if no preloaded data
@@ -83,41 +85,43 @@ export function CompanyDetailView({ companyId, onBack, preloaded }: CompanyDetai
         </Button>
       )}
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          icon={<Users className="w-5 h-5 text-blue-600" />}
-          label="Members"
-          value={String(members.length)}
-          bg="bg-blue-50"
-        />
-        <StatCard
-          icon={<Activity className="w-5 h-5 text-green-600" />}
-          label="Active Users (30d)"
-          value={String(analytics?.active_users ?? 0)}
-          bg="bg-green-50"
-        />
-        <StatCard
-          icon={<ShieldCheck className="w-5 h-5 text-purple-600" />}
-          label="Compliance Score"
-          value={
-            analytics?.overall_compliance_score_percentage != null
-              ? `${analytics.overall_compliance_score_percentage}%`
-              : '--'
-          }
-          bg="bg-purple-50"
-        />
-        <StatCard
-          icon={<DollarSign className="w-5 h-5 text-orange-600" />}
-          label="Cost (30d)"
-          value={
-            analytics?.total_cost_usd != null
-              ? `$${analytics.total_cost_usd.toFixed(2)}`
-              : '$0.00'
-          }
-          bg="bg-orange-50"
-        />
-      </div>
+      {/* Stat Cards (hidden for employees) */}
+      {!hideTeamManagement && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard
+            icon={<Users className="w-5 h-5 text-blue-600" />}
+            label="Members"
+            value={String(members.length)}
+            bg="bg-blue-50"
+          />
+          <StatCard
+            icon={<Activity className="w-5 h-5 text-green-600" />}
+            label="Active Users (30d)"
+            value={String(analytics?.active_users ?? 0)}
+            bg="bg-green-50"
+          />
+          <StatCard
+            icon={<ShieldCheck className="w-5 h-5 text-purple-600" />}
+            label="Compliance Score"
+            value={
+              analytics?.overall_compliance_score_percentage != null
+                ? `${analytics.overall_compliance_score_percentage}%`
+                : '--'
+            }
+            bg="bg-purple-50"
+          />
+          <StatCard
+            icon={<DollarSign className="w-5 h-5 text-orange-600" />}
+            label="Cost (30d)"
+            value={
+              analytics?.total_cost_usd != null
+                ? `$${analytics.total_cost_usd.toFixed(2)}`
+                : '$0.00'
+            }
+            bg="bg-orange-50"
+          />
+        </div>
+      )}
 
       {/* Company Profile */}
       <CompanyProfile
@@ -126,20 +130,24 @@ export function CompanyDetailView({ companyId, onBack, preloaded }: CompanyDetai
         memberCount={members.length}
       />
 
-      {/* Members Table */}
-      <UserList
-        members={members}
-        onUpdateRole={handleUpdateRole}
-        onRemoveUser={handleRemoveUser}
-        onInviteUser={() => setShowInviteDialog(true)}
-      />
+      {/* Members Table (hidden for employees) */}
+      {!hideTeamManagement && (
+        <>
+          <UserList
+            members={members}
+            onUpdateRole={handleUpdateRole}
+            onRemoveUser={handleRemoveUser}
+            onInviteUser={() => setShowInviteDialog(true)}
+          />
 
-      {/* Invite Dialog */}
-      <InviteUserDialog
-        open={showInviteDialog}
-        onOpenChange={setShowInviteDialog}
-        onInvite={handleInviteUser}
-      />
+          {/* Invite Dialog */}
+          <InviteUserDialog
+            open={showInviteDialog}
+            onOpenChange={setShowInviteDialog}
+            onInvite={handleInviteUser}
+          />
+        </>
+      )}
     </div>
   );
 }

@@ -159,25 +159,40 @@ export default function CompanyPage() {
   // ─── Company member: show their company directly ───
   if (data?.company) {
     const companyId = data.company.company.id;
+    const isEmployee = role === 'employee';
+
     return (
       <div className="p-4 sm:p-6 lg:p-8">
         <div className="max-w-7xl mx-auto space-y-6">
-          <PageHeader
-            subtitle="Cross-app compliance analytics for your organization"
-            companyId={companyId}
-            isFetching={isFetching}
-            onRefresh={() => refetch()}
-          />
+          {!isEmployee && (
+            <PageHeader
+              subtitle="Cross-app compliance analytics for your organization"
+              companyId={companyId}
+              isFetching={isFetching}
+              onRefresh={() => refetch()}
+            />
+          )}
 
-          {/* Analytics KPIs */}
-          <CompanyKPISection companyId={companyId} />
+          {isEmployee ? (
+            /* Employees only see company details card */
+            <CompanyDetailView
+              companyId={companyId}
+              preloaded={data.company}
+              hideTeamManagement
+            />
+          ) : (
+            <>
+              {/* Analytics KPIs */}
+              <CompanyKPISection companyId={companyId} />
 
-          {/* Team Management */}
-          <SectionDivider title="Team Management" />
-          <CompanyDetailView
-            companyId={companyId}
-            preloaded={data.company}
-          />
+              {/* Team Management */}
+              <SectionDivider title="Team Management" />
+              <CompanyDetailView
+                companyId={companyId}
+                preloaded={data.company}
+              />
+            </>
+          )}
         </div>
       </div>
     );

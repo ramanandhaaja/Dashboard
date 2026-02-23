@@ -13,7 +13,6 @@ import { AnalyticsOverview } from '@/components/analytics/analytics-overview';
 import { UserActivityChart } from '@/components/analytics/user-activity-chart';
 import { DepartmentComparisonChart } from '@/components/analytics/department-comparison-chart';
 import { ActivityHeatmap } from '@/components/analytics/activity-heatmap';
-import { TopPerformersTable } from '@/components/analytics/top-performers-table';
 import { EngagementMetrics } from '@/components/analytics/engagement-metrics';
 import { TopDetectedWords } from '@/components/analytics/top-detected-words';
 import { UserSearchFilter, type SelectedUser } from '@/components/analytics/user-search-filter';
@@ -169,9 +168,6 @@ export default function BotAnalyticsPage() {
 
             {/* Activity Heatmap - Shows when detections occurred */}
             <ActivityHeatmap data={data.heatmapData} />
-
-            {/* Top Teams Table */}
-            <TopPerformersTable performers={data.topPerformers} />
           </>
         )}
       </div>

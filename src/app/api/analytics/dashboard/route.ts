@@ -198,7 +198,7 @@ export async function GET(request: Request) {
           teamsQuery = teamsQuery.ilike('sender_name', filterUser.name);
         }
       } else if (scope === 'bot' && role !== 'super_admin' && company_id) {
-        // Company users: only show data from their company members
+        // Company users on bot page: only show data from their company members
         const { data: botMembers } = await supabase
           .from('company_members')
           .select('user_id')
@@ -219,6 +219,34 @@ export async function GET(request: Request) {
             teamsRows = [];
           }
         }
+      } else if (scope === 'company') {
+        // Company analytics page: filter teams data by the selected (or session) company
+        const targetCompanyId = filterCompanyId || company_id;
+        if (targetCompanyId) {
+          const { data: compMembers } = await supabase
+            .from('company_members')
+            .select('user_id')
+            .eq('company_id', targetCompanyId)
+            .eq('status', 'active');
+
+          if (compMembers && compMembers.length > 0) {
+            const memberIds = compMembers.map((m: { user_id: string }) => m.user_id);
+            const { data: memberUsers } = await supabase
+              .from('users')
+              .select('email')
+              .in('id', memberIds);
+
+            const memberEmails = (memberUsers || []).map((u: { email: string }) => u.email.toLowerCase());
+            if (memberEmails.length > 0) {
+              teamsQuery = teamsQuery.in('sender_email', memberEmails);
+            } else {
+              teamsRows = [];
+            }
+          } else {
+            teamsRows = [];
+          }
+        }
+        // super_admin with no company filter: show all teams data
       }
 
       const { data: teamsData } = await teamsQuery;
