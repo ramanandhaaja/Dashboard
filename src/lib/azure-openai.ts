@@ -270,12 +270,12 @@ SuggestedAlternative must be a COMPLETE REPLACEMENT for the OffendingText. It mu
 WRONG (append pattern — NEVER DO THIS):
 - Original: "Mark neemt twee dagen vrij - zijn vrouw moet naar het ziekenhuis"
 - BAD SuggestedAlternative: "zijn vrouw moet naar een ziekenhuisafspraak en er moet iemand bij de kinderen zijn. Mark neemt twee dagen vrij voor privéredenen."  ← WRONG: keeps original + appends
-- GOOD SuggestedAlternative: "wegens persoonlijke omstandigheden | voor privéredenen | vanwege familieomstandigheden"  ← CORRECT: pure replacement
+- GOOD SuggestedAlternative: "wegens persoonlijke omstandigheden, voor privéredenen, vanwege familieomstandigheden"  ← CORRECT: pure replacement
 
 WRONG (append pattern — English):
 - Original: "Mark is taking two days off - his wife has a hospital appointment"
 - BAD: "Mark is taking two days off - his wife has a hospital appointment. Mark is taking two days off for personal reasons."  ← WRONG
-- GOOD: "due to personal circumstances | for personal reasons | for family commitments"  ← CORRECT
+- GOOD: "due to personal circumstances, for personal reasons, for family commitments"  ← CORRECT
 
 ## Output Format
 CRITICAL: Respond with ONLY valid JSON. Do NOT use markdown code blocks, backticks, or any formatting. Return a raw JSON array.
@@ -294,47 +294,11 @@ IMPORTANT rules for OffendingText and SuggestedAlternative:
 - SuggestedAlternative MUST NOT retain ANY of the problematic language from OffendingText.
 - Rhetorical questions must be rewritten as neutral declarative statements.
 - Every SuggestedAlternative MUST NOT contain duplicate consecutive words.
-- Provide THREE alternative replacements separated by " | " (pipe with spaces).
+- Provide THREE alternative replacements separated by ", " (comma with space). Each alternative must be distinct and different from the others.
 - When there are MULTIPLE issues in the same text, return a SEPARATE JSON object for each issue.
 - ConfidenceScore: A number between 0.0 and 1.0 indicating how confident you are this is a genuine issue (1.0 = certain, 0.7 = likely, 0.5 = borderline). Consider context, severity, and how clearly the text violates DE&I or clarity standards.
 
-Format: [{"IssueDetected":"...","OffendingText":"minimal problematic phrase","WhyItsProblematic":"...","SuggestedAlternative":"replacement 1 | replacement 2 | replacement 3","ConfidenceScore":0.0}]
-
-## Examples
-
-CRITICAL LANGUAGE RULE: Match your output language to the INPUT language.
-
-### English Examples
-
-Example (English - Gendered Language): {"IssueDetected":"Gendered job title","OffendingText":"chairman","WhyItsProblematic":"'Chairman' is a gendered term that may discourage non-male candidates from applying or feeling included.","SuggestedAlternative":"chairperson | chair | presiding officer","ConfidenceScore":0.95}
-
-Example (English - LGBTQ+ Coded Language): {"IssueDetected":"LGBTQ+ Discrimination (Coded Language)","OffendingText":"a bit too flamboyant for a management role","WhyItsProblematic":"'Flamboyant' in the context of professional competence is coded anti-LGBTQ+ language. Evaluating leadership suitability based on personal expression rather than qualifications is discriminatory and may violate the AWGB.","SuggestedAlternative":"well-qualified for the management role based on his experience | a strong candidate for the management role given his track record | suited for the management role — let's evaluate based on competencies and results","ConfidenceScore":0.9}
-
-Example (English - Privacy/Medical): {"IssueDetected":"Privacy Violation / Unauthorized Medical Disclosure","OffendingText":"He had a burnout, so don't expect too much","WhyItsProblematic":"Sharing a colleague's medical diagnosis with the team without consent violates privacy (AVG/GDPR). 'Don't expect too much' infantilizes and undermines competence.","SuggestedAlternative":"He has agreed on a return-to-work plan with his manager | His manager has coordinated a phased reintegration plan | He will be resuming work with agreed-upon support from his manager","ConfidenceScore":0.95}
-
-Example (English - Disability Discrimination): {"IssueDetected":"Disability Discrimination","OffendingText":"Isn't it a bit risky to hire someone with a disability for this role?","WhyItsProblematic":"Questioning a hire based on disability status is discriminatory and violates the WGBH/CZ. Employers are legally required to provide reasonable accommodations. Focus on job requirements, not disability.","SuggestedAlternative":"What are the essential job requirements, and what accommodations can we provide? | Let's assess job requirements and discuss reasonable accommodations with HR | The role requires [specific tasks] — let's explore how to enable success for all candidates","ConfidenceScore":0.95}
-
-Example (English - Dismissal of Inclusion): {"IssueDetected":"Dismissal of Inclusion Efforts","OffendingText":"We have enough diversity now. Can't we just choose the best candidate?","WhyItsProblematic":"This implies diversity and quality are opposites. Diverse candidate pools are proven to improve outcomes. 'Enough diversity' treats inclusion as a checkbox rather than an ongoing commitment.","SuggestedAlternative":"We continue striving for diverse candidate pools to find the best talent. Selection criteria: [skills] | We select based on [specific criteria] while maintaining diverse pipelines to reduce bias | Our selection is based on [competencies]. Diverse sourcing helps us find the strongest candidates","ConfidenceScore":0.9}
-
-Example (English - Temporal Vagueness): {"IssueDetected":"Temporal Vagueness","OffendingText":"sometime this month","WhyItsProblematic":"'Sometime this month' provides no specific deadline, forcing follow-up clarification.","SuggestedAlternative":"on [specific date] at [time] | by [specific date] | during the week of [date]","ConfidenceScore":0.8}
-
-Example (English - Client-Driven Discrimination): {"IssueDetected":"Client-Driven Gender Discrimination","OffendingText":"The client specifically asked for a man for this assignment. There's nothing we can do about that.","WhyItsProblematic":"Accepting discriminatory client requests violates equal treatment law (AWGB). Organizations must refuse discriminatory demands. 'Nothing we can do' normalizes discrimination.","SuggestedAlternative":"We select based on expertise, not gender. I'll discuss this with the client. | Our assignment policy is skills-based. Let me address this with the client. | We don't accommodate discriminatory criteria — let's propose the best-qualified candidate.","ConfidenceScore":0.95}
-
-### Dutch Examples (ONLY when input is in Dutch)
-
-Example (Dutch - Othering): {"IssueDetected":"Definiëren door ontkenning (Othering)","OffendingText":"niet-westerse","WhyItsProblematic":"Termen als 'niet-westers' definiëren mensen op basis van wat ze NIET zijn en stellen 'westers' als de norm. Dit is othering.","SuggestedAlternative":"met een migratieachtergrond | biculturele | met diverse achtergronden","ConfidenceScore":0.95}
-
-Example (Dutch - LHBTQ+ Gecodeerde Taal): {"IssueDetected":"LHBTQ+ Discriminatie (Gecodeerde Taal)","OffendingText":"een beetje te flamboyant voor een managementrol","WhyItsProblematic":"'Flamboyant' in de context van professionele geschiktheid is gecodeerde anti-LHBTQ+ taal. Leiderschap beoordelen op persoonlijke expressie in plaats van kwalificaties is discriminerend en kan in strijd zijn met de AWGB.","SuggestedAlternative":"goed gekwalificeerd voor de managementrol op basis van zijn ervaring | een sterke kandidaat voor de managementrol gezien zijn trackrecord | geschikt voor de managementrol — laten we beoordelen op competenties en resultaten","ConfidenceScore":0.9}
-
-Example (Dutch - Validisme/Arbeidsbeperking): {"IssueDetected":"Validistische Discriminatie","OffendingText":"Is het niet een beetje riskant om iemand met een arbeidsbeperking aan te nemen voor deze functie?","WhyItsProblematic":"Het in twijfel trekken van een aanstelling op basis van een beperking is discriminerend en in strijd met de WGBH/CZ. Werkgevers zijn wettelijk verplicht redelijke aanpassingen te bieden. Focus op functie-eisen, niet op de beperking.","SuggestedAlternative":"Wat zijn de essentiële functie-eisen en welke aanpassingen kunnen we bieden? | Laten we de functie-eisen beoordelen en redelijke aanpassingen bespreken met HR | De functie vereist [specifieke taken] — laten we onderzoeken hoe we succes mogelijk maken voor alle kandidaten","ConfidenceScore":0.95}
-
-Example (Dutch - Afwijzing Inclusie-inspanningen): {"IssueDetected":"Afwijzing van Inclusie-inspanningen","OffendingText":"Waarom moet alles tegenwoordig zo politiek correct?","WhyItsProblematic":"Het afwijzen van inclusief taalgebruik als 'politiek correct' bagatelliseert de ervaringen van gemarginaliseerde groepen en signaleert een onveilige werkomgeving. Inclusieve communicatie is een professionele standaard, geen overdrijving.","SuggestedAlternative":"Inclusief taalgebruik is een professionele standaard die respect toont voor alle collega's | Professionele communicatie houdt rekening met de impact op alle ontvangers | Respectvolle communicatie draagt bij aan psychologische veiligheid voor iedereen","ConfidenceScore":0.9}
-
-Example (Dutch - Privacy/Medisch): {"IssueDetected":"Privacyschending / Ongeautoriseerde Medische Openbaarmaking","OffendingText":"Hij heeft een burn-out gehad, dus verwacht niet te veel","WhyItsProblematic":"Het delen van een medische diagnose van een collega met het team zonder toestemming schendt de privacy (AVG/GDPR). 'Verwacht niet te veel' infantiliseert en ondermijnt competentie.","SuggestedAlternative":"Hij heeft met zijn manager een terugkeerplan afgesproken | Zijn manager heeft een gefaseerd herintegratieplan opgesteld | Hij hervat het werk met afgesproken ondersteuning van zijn manager","ConfidenceScore":0.95}
-
-Example (Dutch - Etniciteit/Naam): {"IssueDetected":"Discriminatie op Naam/Etniciteit","OffendingText":"zijn naam te ingewikkeld is voor klanten","WhyItsProblematic":"Het afwijzen van iemand vanwege hun naam is etnische discriminatie en in strijd met de AWGB. Namen zijn onderdeel van iemands identiteit en culturele achtergrond.","SuggestedAlternative":"geselecteerd op basis van [criterium 1], [criterium 2] en [criterium 3] | beoordeeld op kwalificaties en functie-eisen | geselecteerd op competenties en ervaring, niet op naam","ConfidenceScore":0.95}
-
-Example (Dutch - Temporele Vaagheid): {"IssueDetected":"Temporele Vaagheid","OffendingText":"ergens deze maand","WhyItsProblematic":"'Ergens deze maand' geeft geen specifieke deadline, waardoor de ontvanger moet terugvragen.","SuggestedAlternative":"op [specifieke datum] om [tijd] | voor [specifieke datum] | in de week van [datum]","ConfidenceScore":0.8}
+Format: [{"IssueDetected":"...","OffendingText":"minimal problematic phrase","WhyItsProblematic":"...","SuggestedAlternative":"replacement 1, replacement 2, replacement 3","ConfidenceScore":0.0}]
 
 If no issues are found, return: []`
 
