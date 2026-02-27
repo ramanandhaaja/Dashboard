@@ -274,6 +274,9 @@ export async function analyzeDEICompliance(
     outputTokens: completion.usage?.completion_tokens || 0,
   }
 
+  // Log raw AI response for debugging
+  console.log('[azure-openai] Raw AI content (first 500 chars):', content.substring(0, 500))
+
   // Parse JSON response
   let cleanContent = content.trim()
   cleanContent = cleanContent.replace(/^```json\s*/i, '').replace(/\s*```$/i, '')
@@ -307,6 +310,12 @@ export async function analyzeDEICompliance(
       }]
     }
   }
+
+  // Log for debugging issue_type mapping
+  console.log('[azure-openai] Parsed analysis:', JSON.stringify(analysis.map(a => ({
+    IssueDetected: a.IssueDetected,
+    OffendingText: a.OffendingText,
+  }))))
 
   return { analysis, usage }
 }
