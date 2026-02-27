@@ -402,6 +402,16 @@ export async function analyzeDEICompliance(
     return false
   })
 
+  // Deduplicate identical suggestions within each issue
+  for (const a of validatedAnalysis) {
+    if (a.SuggestedAlternative) {
+      const unique = [...new Set(
+        a.SuggestedAlternative.split(',').map(s => s.trim()).filter(s => s)
+      )]
+      a.SuggestedAlternative = unique.join(', ')
+    }
+  }
+
   // Log for debugging issue_type mapping
   console.log('[azure-openai] Parsed analysis:', JSON.stringify(validatedAnalysis.map(a => ({
     IssueDetected: a.IssueDetected,
@@ -666,6 +676,16 @@ export async function analyzeDEIComplianceForBot(
       issue.SuggestedAlternative &&
       botTextLower.includes(issue.OffendingText.toLowerCase())
   )
+
+  // Deduplicate identical suggestions within each issue
+  for (const issue of issues) {
+    if (issue.SuggestedAlternative) {
+      const unique = [...new Set(
+        issue.SuggestedAlternative.split(',').map(s => s.trim()).filter(s => s)
+      )]
+      issue.SuggestedAlternative = unique.join(', ')
+    }
+  }
 
   return { issues, hasIssues: issues.length > 0 }
 }
