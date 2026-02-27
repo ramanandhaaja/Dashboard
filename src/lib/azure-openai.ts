@@ -254,6 +254,7 @@ export async function analyzeDEICompliance(
 
   const completion = await client.chat.completions.create({
     model: MODEL,
+    temperature: 0,
     messages: [
       { role: 'system', content: DEI_SYSTEM_PROMPT },
       {
