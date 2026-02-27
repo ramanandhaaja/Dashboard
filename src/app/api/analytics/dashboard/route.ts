@@ -372,7 +372,7 @@ function computeModulePerformance(rows: IssueRow[]): ModulePerformanceData {
     }));
 
     // App breakdown for this module
-    const appMap: Record<string, number> = { word: 0, outlook: 0, teams: 0 };
+    const appMap: Record<string, number> = { word: 0, outlook: 0 };
     modRows.forEach((r) => {
       if (r.source_app) appMap[r.source_app] = (appMap[r.source_app] || 0) + 1;
     });
