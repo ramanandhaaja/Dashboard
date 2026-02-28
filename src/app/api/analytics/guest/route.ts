@@ -72,21 +72,24 @@ export async function GET(request: Request) {
     ).length || 0;
     const avgAccuracy = totalIssues > 0 ? Math.round((successfulActions / totalIssues) * 100) : 0;
 
-    // Get unique users active today
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Check for client timezone early (used in multiple places)
+    const clientTz = searchParams.get('tz') || 'UTC';
+    const dayFormatter = new Intl.DateTimeFormat('en-CA', { timeZone: clientTz }); // en-CA gives YYYY-MM-DD
+
+    // Get unique users active today (in client timezone)
+    const todayStr = dayFormatter.format(new Date());
     const activeToday = new Set(
-      issues?.filter(issue => new Date(issue.detected_at) >= today)
+      issues?.filter(issue => dayFormatter.format(new Date(issue.detected_at)) === todayStr)
         .map(issue => issue.user_id) || []
     ).size;
 
-    // Group issues by day for activity chart (not hour)
+    // Group issues by day for activity chart (in client timezone)
     const activityByDay = new Map<string, { analyses: number; corrections: number; reviews: number }>();
 
     issues?.forEach(issue => {
       const date = new Date(issue.detected_at);
-      // Group by day only (YYYY-MM-DD format)
-      const dayKey = date.toISOString().split('T')[0];
+      // Group by day in client timezone (YYYY-MM-DD format)
+      const dayKey = dayFormatter.format(date);
 
       if (!activityByDay.has(dayKey)) {
         activityByDay.set(dayKey, { analyses: 0, corrections: 0, reviews: 0 });
@@ -122,7 +125,6 @@ export async function GET(request: Request) {
 
     // Create heatmap data from all issues by day-of-week and hour
     const allDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const allHours = Array.from({ length: 18 }, (_, i) => {
       const h = i + 6; // 6 AM to 11 PM
       const period = h >= 12 ? 'PM' : 'AM';
@@ -131,15 +133,23 @@ export async function GET(request: Request) {
     });
 
     const heatmapMap = new Map<string, number>();
+    const tzFormatter = new Intl.DateTimeFormat('en-US', {
+      weekday: 'long',
+      hour: 'numeric',
+      hour12: false,
+      timeZone: clientTz,
+    });
     issues?.forEach(issue => {
       const date = new Date(issue.detected_at);
-      const day = dayNames[date.getDay()];
-      const hour = date.getHours();
-      if (hour >= 6 && hour <= 23) {
-        const period = hour >= 12 ? 'PM' : 'AM';
-        const display = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+      if (isNaN(date.getTime())) return;
+      const parts = tzFormatter.formatToParts(date);
+      const localDay = parts.find(p => p.type === 'weekday')?.value || '';
+      const localHour = parseInt(parts.find(p => p.type === 'hour')?.value || '0', 10);
+      if (localHour >= 6 && localHour <= 23) {
+        const period = localHour >= 12 ? 'PM' : 'AM';
+        const display = localHour > 12 ? localHour - 12 : localHour === 0 ? 12 : localHour;
         const hourLabel = `${display} ${period}`;
-        const key = `${day}|${hourLabel}`;
+        const key = `${localDay}|${hourLabel}`;
         heatmapMap.set(key, (heatmapMap.get(key) || 0) + 1);
       }
     });

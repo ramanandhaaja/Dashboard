@@ -103,7 +103,7 @@ export function Sidebar() {
           {/* Footer */}
           <div className="p-4 border-t border-sidebar-border">
             <p className="text-xs text-muted-foreground text-center">
-              © 2025 Be-inc
+              © {new Date().getFullYear()} Be-inc
             </p>
           </div>
         </div>

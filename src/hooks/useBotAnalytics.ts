@@ -38,7 +38,11 @@ export interface BotAnalyticsData {
 }
 
 async function fetchBotAnalytics(filterUserId?: string | null): Promise<BotAnalyticsData> {
-  const params = filterUserId ? `?user_id=${filterUserId}` : '';
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const searchParams = new URLSearchParams();
+  if (filterUserId) searchParams.set('user_id', filterUserId);
+  searchParams.set('tz', tz);
+  const params = `?${searchParams.toString()}`;
   const response = await fetch(`/api/analytics/bot${params}`);
 
   if (!response.ok) {

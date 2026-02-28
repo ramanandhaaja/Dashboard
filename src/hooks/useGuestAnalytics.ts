@@ -33,7 +33,11 @@ export interface GuestAnalyticsData {
 }
 
 async function fetchGuestAnalytics(filterUserId?: string | null): Promise<GuestAnalyticsData> {
-  const params = filterUserId ? `?user_id=${filterUserId}` : '';
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const searchParams = new URLSearchParams();
+  if (filterUserId) searchParams.set('user_id', filterUserId);
+  searchParams.set('tz', tz);
+  const params = `?${searchParams.toString()}`;
   const response = await fetch(`/api/analytics/guest${params}`);
 
   if (!response.ok) {
