@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { validateToken } from '@/lib/validate-token'
 import { analyzeDEICompliance } from '@/lib/azure-openai'
 import { handlePreflight, withCors } from '@/lib/cors'
+import { redactPII, restoreEntities } from '@/lib/pii-redaction'
 
 export async function POST(request: Request) {
   try {
@@ -25,9 +26,23 @@ export async function POST(request: Request) {
       ? `Subject: ${subject}\n\n${text}`
       : text
 
-    const { analysis, usage } = await analyzeDEICompliance(fullText)
+    // Redact PII before sending to LLM
+    const { redactedText, entityMap } = await redactPII(fullText)
 
-    return withCors(NextResponse.json({ analysis, usage }), request)
+    console.log('[PII] ── Original text:', fullText)
+    console.log('[PII] ── Redacted text (sent to LLM):', redactedText)
+    console.log('[PII] ── Entity map:', entityMap.map(e => `${e.placeholder} → "${e.text}" (${e.category})`))
+
+    const { analysis, usage } = await analyzeDEICompliance(redactedText)
+
+    console.log('[PII] ── LLM OffendingText (before restore):', analysis.map(a => a.OffendingText))
+
+    // Restore original text in OffendingText/SuggestedAlternative for client-side highlighting
+    const restoredAnalysis = restoreEntities(analysis, entityMap)
+
+    console.log('[PII] ── OffendingText (after restore):', restoredAnalysis.map(a => a.OffendingText))
+
+    return withCors(NextResponse.json({ analysis: restoredAnalysis, usage }), request)
   } catch (error) {
     console.error('[API /ai/analyze] Error:', error)
     return withCors(

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { validateBotSecret } from '@/lib/validate-bot-secret'
 import { analyzeDEIComplianceForBot } from '@/lib/azure-openai'
+import { redactPII, restoreBotEntities } from '@/lib/pii-redaction'
 
 export async function POST(request: Request) {
   try {
@@ -19,7 +20,13 @@ export async function POST(request: Request) {
       )
     }
 
-    const result = await analyzeDEIComplianceForBot(text)
+    // Redact PII before sending to LLM
+    const { redactedText, entityMap } = await redactPII(text)
+
+    const result = await analyzeDEIComplianceForBot(redactedText)
+
+    // Restore original text in OffendingText/SuggestedAlternative
+    result.issues = restoreBotEntities(result.issues, entityMap)
 
     return NextResponse.json(result)
   } catch (error) {
