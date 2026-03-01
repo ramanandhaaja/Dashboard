@@ -153,8 +153,10 @@ export function ModulePerformanceTiles({ data }: ModulePerformanceTilesProps) {
       <h2 className="text-lg font-semibold text-foreground">Module Performance</h2>
       <div className="space-y-3">
         <ModuleTile moduleKey="bias" data={data.bias} />
+        {/* TODO: Re-enable when tone and clarity modules are ready
         <ModuleTile moduleKey="tone" data={data.tone} />
         <ModuleTile moduleKey="clarity" data={data.clarity} />
+        */}
       </div>
     </div>
   );

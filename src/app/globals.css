@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&display=swap');
 @import "tailwindcss";
 
 @custom-variant dark (&:is(.dark *));
@@ -118,4 +119,83 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Premium auth animations */
+@keyframes authFadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes authFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes authGrowFromCenter {
+  from {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+  to {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+@keyframes authShimmer {
+  0% { transform: translateX(-100%) rotate(12deg); }
+  100% { transform: translateX(200%) rotate(12deg); }
+}
+
+@keyframes authPulseGlow {
+  0%, 100% { box-shadow: 0 4px 20px rgba(91, 45, 140, 0.2); }
+  50% { box-shadow: 0 8px 36px rgba(91, 45, 140, 0.35); }
+}
+
+@keyframes authOrbPulse {
+  0%, 100% { opacity: 0.04; transform: scale(1); }
+  50% { opacity: 0.08; transform: scale(1.05); }
+}
+
+.auth-animate-up {
+  opacity: 0;
+  animation: authFadeSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.auth-animate-fade {
+  opacity: 0;
+  animation: authFadeIn 0.5s ease-out forwards;
+}
+
+.auth-animate-grow {
+  opacity: 0;
+  transform-origin: center;
+  animation: authGrowFromCenter 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.auth-shimmer {
+  animation: authShimmer 3s ease-in-out infinite 2.5s;
+}
+
+.auth-pulse-glow {
+  animation: authPulseGlow 3s ease-in-out infinite 2s;
+}
+
+.auth-orb-pulse {
+  animation: authOrbPulse 6s ease-in-out infinite;
+}
+
+.auth-orb-pulse-slow {
+  animation: authOrbPulse 8s ease-in-out infinite 2s;
+}
+
+.font-serif-display {
+  font-family: 'DM Serif Display', 'Georgia', serif;
 }

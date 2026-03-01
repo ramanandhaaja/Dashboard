@@ -273,7 +273,9 @@ export async function GET(request: Request) {
     // ── Compute Module Performance ──
     const modules = scope === 'bot'
       ? computeBotModulePerformance(teamsRows)
-      : computeModulePerformance(rows);
+      : scope === 'company'
+        ? computeCompanyModulePerformance(rows, teamsRows)
+        : computeModulePerformance(rows);
 
     // ── Compute Department Leaderboard ──
     const departments = computeDepartmentLeaderboard(rows, userDeptMap);
@@ -394,6 +396,67 @@ function computeModulePerformance(rows: IssueRow[]): ModulePerformanceData {
     bias: buildModule('bias'),
     tone: buildModule('tone'),
     clarity: buildModule('clarity'),
+  };
+}
+
+function computeCompanyModulePerformance(rows: IssueRow[], teamsRows: TeamsRow[]): ModulePerformanceData {
+  const totalUsers = new Set(rows.map((r) => r.user_id)).size;
+
+  function buildCompanyModule(mod: ModuleType): ModuleData {
+    // Word + Outlook data from dei_issues
+    const modRows = rows.filter((r) => r.module_type === mod);
+    const resolved = modRows.filter(
+      (r) => r.user_action === 'accepted' || r.user_action === 'auto_corrected'
+    ).length;
+    const activeUsers = new Set(modRows.map((r) => r.user_id)).size;
+
+    // Teams data from dei_words_teams
+    const teamsModRows = teamsRows.filter((r) => categoryToModule(r.category) === mod);
+    const teamsResolved = teamsModRows.filter((r) => r.suggested_alternative).length;
+
+    // Merge categories from both sources
+    const catMap = new Map<string, number>();
+    modRows.forEach((r) => {
+      const cat = r.issue_type || 'Other';
+      catMap.set(cat, (catMap.get(cat) || 0) + 1);
+    });
+    teamsModRows.forEach((r) => {
+      const cat = r.category || 'Other';
+      catMap.set(cat, (catMap.get(cat) || 0) + 1);
+    });
+    const categories = Array.from(catMap.entries()).map(([name, count]) => ({
+      name,
+      count,
+      percentage: (modRows.length + teamsModRows.length) > 0
+        ? Math.round((count / (modRows.length + teamsModRows.length)) * 100)
+        : 0,
+    }));
+
+    // App breakdown: Word + Outlook + Teams
+    const appMap: Record<string, number> = { word: 0, outlook: 0, teams: teamsModRows.length };
+    modRows.forEach((r) => {
+      if (r.source_app) appMap[r.source_app] = (appMap[r.source_app] || 0) + 1;
+    });
+
+    const totalIncidents = modRows.length + teamsModRows.length;
+    const totalResolved = resolved + teamsResolved;
+    const score = totalIncidents > 0 ? Math.round((totalResolved / totalIncidents) * 100) : 100;
+
+    return {
+      score,
+      activeUserPercentage: totalUsers > 0 ? Math.round((activeUsers / totalUsers) * 100) : 0,
+      trend: 3,
+      incidentCount: totalIncidents,
+      resolvedCount: totalResolved,
+      categories,
+      appBreakdown: appMap,
+    };
+  }
+
+  return {
+    bias: buildCompanyModule('bias'),
+    tone: buildCompanyModule('tone'),
+    clarity: buildCompanyModule('clarity'),
   };
 }
 
