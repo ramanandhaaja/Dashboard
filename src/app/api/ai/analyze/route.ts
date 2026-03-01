@@ -29,18 +29,23 @@ export async function POST(request: Request) {
     // Redact PII before sending to LLM
     const { redactedText, entityMap } = await redactPII(fullText)
 
-    console.log('[PII] ── Original text:', fullText)
-    console.log('[PII] ── Redacted text (sent to LLM):', redactedText)
-    console.log('[PII] ── Entity map:', entityMap.map(e => `${e.placeholder} → "${e.text}" (${e.category})`))
+    console.log('========== PII REDACTION START ==========')
+    console.log('[PII] ORIGINAL TEXT:', fullText)
+    console.log('[PII] REDACTED TEXT (sent to LLM):', redactedText)
+    console.log('[PII] ENTITIES FOUND:', entityMap.length)
+    entityMap.forEach(e => console.log(`  ${e.placeholder} → "${e.text}" (${e.category})`))
+    console.log('========== PII REDACTION END ==========')
 
     const { analysis, usage } = await analyzeDEICompliance(redactedText)
 
-    console.log('[PII] ── LLM OffendingText (before restore):', analysis.map(a => a.OffendingText))
+    console.log('========== PII RESTORE START ==========')
+    console.log('[PII] LLM OffendingText (before restore):', JSON.stringify(analysis.map(a => a.OffendingText)))
 
     // Restore original text in OffendingText/SuggestedAlternative for client-side highlighting
     const restoredAnalysis = restoreEntities(analysis, entityMap)
 
-    console.log('[PII] ── OffendingText (after restore):', restoredAnalysis.map(a => a.OffendingText))
+    console.log('[PII] OffendingText (after restore):', JSON.stringify(restoredAnalysis.map(a => a.OffendingText)))
+    console.log('========== PII RESTORE END ==========')
 
     return withCors(NextResponse.json({ analysis: restoredAnalysis, usage }), request)
   } catch (error) {
