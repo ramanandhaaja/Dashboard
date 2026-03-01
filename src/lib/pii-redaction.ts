@@ -25,7 +25,9 @@ const MIN_CONFIDENCE = 0.8;
 // Categories to redact — skip Organization (needed for DE&I context)
 const REDACT_CATEGORIES = new Set([
   'Person',
-  'PersonType',
+  // NOTE: 'PersonType' intentionally excluded — it matches generic words like
+  // "chairman", "fireman", "guys", "wife", "kids", "clients", "candidate" etc.
+  // which are needed for DE&I analysis (gendered terms, ableist language).
   'Email',
   'PhoneNumber',
   'Address',
@@ -88,7 +90,7 @@ const REDACT_CATEGORIES = new Set([
 
 // Map Azure category to placeholder prefix
 function categoryToPrefix(category: string): string {
-  if (category === 'Person' || category === 'PersonType') return 'PERSON';
+  if (category === 'Person') return 'PERSON';
   if (category === 'Email') return 'EMAIL';
   if (category === 'PhoneNumber') return 'PHONE';
   if (category === 'Address') return 'ADDRESS';
@@ -141,7 +143,7 @@ export async function redactPII(text: string): Promise<RedactionResult> {
 
       const documents = batch.map((chunk, idx) => ({
         id: String(idx + 1),
-        language: 'en',
+        language: '',  // Auto-detect language (supports Dutch, German, French, etc.)
         text: chunk,
       }));
 
