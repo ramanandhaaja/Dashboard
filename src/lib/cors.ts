@@ -4,6 +4,7 @@ const ALLOWED_ORIGINS = [
   'https://localhost:3000',
   'https://lively-glacier-0c1d0f103.2.azurestaticapps.net',
   'https://zealous-coast-0f3aff703.4.azurestaticapps.net',
+  'https://nanci-sighful-valentine.ngrok-free.dev',
 ]
 
 /**
